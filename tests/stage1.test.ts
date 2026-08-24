@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAdminSchema, createHomeOwnerSchema, registerSchema } from "@/lib/validation";
+import { addHomeMemberSchema, createAdminSchema, createHomeOwnerSchema, createHomeSchema, createHomeUserSchema, createRoomSchema, normalizeRoomName, registerSchema } from "@/lib/validation";
 import { canAccessHomeOwner, canCreateAdmin, canCreateHomeOwner } from "@/lib/policy";
 import { hashToken, newRawToken } from "@/lib/token";
 import fs from "node:fs";
@@ -26,6 +26,17 @@ describe("session security", () => {
   it("does not repeat tokens", () => expect(newRawToken()).not.toBe(newRawToken()));
 });
 
+describe("Stage 2 input boundaries", () => {
+  const id = "3d594650-3436-4c9b-8545-bf29624e4149";
+  it("validates IANA timezones", () => expect(createHomeSchema.parse({ targetHomeOwnerId: id, name: "Hassan House", timezone: "Asia/Kolkata" }).timezone).toBe("Asia/Kolkata"));
+  it("rejects invalid timezones", () => expect(() => createHomeSchema.parse({ targetHomeOwnerId: id, name: "House", timezone: "Mars/Olympus" })).toThrow());
+  it("rejects owner and Admin injection", () => expect(() => createHomeSchema.parse({ targetHomeOwnerId: id, name: "House", timezone: "UTC", assignedAdminId: "x", role: "OWNER" })).toThrow());
+  it("normalizes room names consistently", () => expect(normalizeRoomName("  KITCHEN  ")).toBe("kitchen"));
+  it("rejects room field injection", () => expect(() => createRoomSchema.parse({ name: "Kitchen", homeId: "other" })).toThrow());
+  it("membership input cannot choose a role", () => expect(() => addHomeMemberSchema.parse({ userId: id, role: "OWNER" })).toThrow());
+  it("Home User creation cannot choose a platform role", () => expect(() => createHomeUserSchema.parse({ name: "Wife", email: "wife@example.com", password: "secure-member-password", role: "HOME_OWNER" })).toThrow());
+});
+
 describe("database invariant migration", () => {
   const sql = fs.readFileSync("prisma/migrations/20260824190000_stage_1_foundation/migration.sql", "utf8");
   it("limits Super Admin and default Admin uniqueness", () => { expect(sql).toContain("only_one_super_admin"); expect(sql).toContain("only_one_default_admin"); });
@@ -33,4 +44,13 @@ describe("database invariant migration", () => {
   it("guards profile roles", () => { expect(sql).toContain("AdminProfile_role_guard"); expect(sql).toContain("HomeOwnerProfile_role_guard"); });
   it("restricts deletion of assigned Admins", () => expect(sql).toContain('REFERENCES "AdminProfile"("userId") ON DELETE RESTRICT'));
   it("uniquely indexes session token hashes", () => expect(sql).toContain('CREATE UNIQUE INDEX "Session_tokenHash_key"'));
+});
+
+describe("Stage 2 archive contract", () => {
+  it("documents authorized direct access and retained data", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    expect(readme).toContain("archived Homes are excluded from normal active lists");
+    expect(readme).toContain("remain directly readable by their existing authorized members");
+    expect(readme).toContain("Rooms and memberships are retained");
+  });
 });

@@ -11,6 +11,12 @@ enum Role {
   SUPER_ADMIN
   ADMIN
   HOME_OWNER
+  HOME_USER
+}
+
+enum HomeMembershipRole {
+  OWNER
+  MEMBER
 }
 
 model User {
@@ -26,8 +32,49 @@ model User {
   adminProfile     AdminProfile?
   homeOwnerProfile HomeOwnerProfile?
   sessions         Session[]
+  homeMemberships  HomeMembership[]
 
   @@index([role, isActive])
+}
+
+model Home {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String
+  timezone    String
+  isArchived  Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  memberships HomeMembership[]
+  rooms       Room[]
+
+  @@index([isArchived])
+}
+
+model HomeMembership {
+  id        String             @id @default(uuid()) @db.Uuid
+  homeId    String             @db.Uuid
+  userId    String             @db.Uuid
+  role      HomeMembershipRole
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  home      Home               @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([homeId, userId])
+  @@index([userId, role])
+}
+
+model Room {
+  id             String   @id @default(uuid()) @db.Uuid
+  homeId         String   @db.Uuid
+  name           String
+  normalizedName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  home           Home     @relation(fields: [homeId], references: [id], onDelete: Restrict)
+
+  @@unique([homeId, normalizedName])
+  @@index([homeId])
 }
 
 model AdminProfile {
