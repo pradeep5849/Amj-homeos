@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAdminSchema, createHomeOwnerSchema, registerSchema } from "@/lib/validation";
+import { addHomeMemberSchema, createAdminSchema, createHomeOwnerSchema, createHomeSchema, createRoomSchema, normalizeRoomName, registerSchema } from "@/lib/validation";
 import { canAccessHomeOwner, canCreateAdmin, canCreateHomeOwner } from "@/lib/policy";
 import { hashToken, newRawToken } from "@/lib/token";
 import fs from "node:fs";
@@ -24,6 +24,16 @@ describe("Stage 1 account boundaries", () => {
 describe("session security", () => {
   it("creates high-entropy random tokens and hashes before persistence", () => { const token = newRawToken(); expect(token.length).toBeGreaterThan(40); expect(hashToken(token)).toMatch(/^[a-f0-9]{64}$/); expect(hashToken(token)).not.toContain(token); });
   it("does not repeat tokens", () => expect(newRawToken()).not.toBe(newRawToken()));
+});
+
+describe("Stage 2 input boundaries", () => {
+  const id = "3d594650-3436-4c9b-8545-bf29624e4149";
+  it("validates IANA timezones", () => expect(createHomeSchema.parse({ targetHomeOwnerId: id, name: "Hassan House", timezone: "Asia/Kolkata" }).timezone).toBe("Asia/Kolkata"));
+  it("rejects invalid timezones", () => expect(() => createHomeSchema.parse({ targetHomeOwnerId: id, name: "House", timezone: "Mars/Olympus" })).toThrow());
+  it("rejects owner and Admin injection", () => expect(() => createHomeSchema.parse({ targetHomeOwnerId: id, name: "House", timezone: "UTC", assignedAdminId: "x", role: "OWNER" })).toThrow());
+  it("normalizes room names consistently", () => expect(normalizeRoomName("  KITCHEN  ")).toBe("kitchen"));
+  it("rejects room field injection", () => expect(() => createRoomSchema.parse({ name: "Kitchen", homeId: "other" })).toThrow());
+  it("membership input cannot choose a role", () => expect(() => addHomeMemberSchema.parse({ userId: id, role: "OWNER" })).toThrow());
 });
 
 describe("database invariant migration", () => {

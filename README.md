@@ -80,6 +80,12 @@ All endpoints use the `/api/v1` namespace:
 
 API responses omit password hashes and session token hashes.
 
+### Stage 2 homes, memberships, and rooms
+
+The `/api/v1/homes` routes provision and list Homes; nested `rooms` and `members` routes manage authorized Rooms and memberships. Admins provision Homes atomically for Home Owners assigned to them, and the target receives an `OWNER` membership. One account can access multiple Homes.
+
+Member onboarding deliberately reuses an existing active `HOME_OWNER` account: an OWNER supplies only its user ID and the server always creates a `MEMBER` membership. Stage 2 does not generate passwords or invent an insecure invitation substitute. Duplicate memberships and normalized duplicate Room names are rejected by PostgreSQL.
+
 ## Database guarantees
 
 The initial migration adds partial unique indexes and triggers beyond Prisma's relation model. They enforce one Super Admin, at most one default Admin, an active default Admin, immutable roles, role-correct Admin/Home Owner profiles, unique session hashes, and restrictive deletion for Admins with assigned Home Owners. Normalized email is unique.
@@ -100,6 +106,6 @@ npm audit
 
 For a disposable PostgreSQL database, apply migrations to it, set `DATABASE_TEST_URL`, and run `npm run test:db`. Never point integration tests at an unknown or production database.
 
-## Stage 1 limitations
+## Stage 2 limitations
 
-Stage 1 is account, authentication, authorization, hierarchy, and administration only. Homes, rooms, devices, Wi-Fi, Zigbee, Zigbee2MQTT, MQTT, Tuya, Bluetooth, Home Assistant, scenes, automation, schedules, notifications, subscriptions, and billing are intentionally deferred.
+Stage 2 adds Homes, Home memberships, Rooms, and their authorization only. Devices, Wi-Fi, Zigbee, Zigbee2MQTT, MQTT, Tuya, Bluetooth, Home Assistant, scenes, automation, schedules, notifications, subscriptions, and billing remain intentionally deferred.
