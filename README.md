@@ -90,6 +90,12 @@ An OWNER can add an existing active `HOME_USER` (or intentionally shared `HOME_O
 
 Archiving is a soft visibility control: archived Homes are excluded from normal active lists but remain directly readable by their existing authorized members and support actors. Rooms and memberships are retained, while OWNER-level authorization is still required for management operations.
 
+### Stage 3 protocol-independent devices
+
+Devices belong to a Home, may optionally belong to a same-Home Room, and declare controlled capabilities such as power, brightness, speed, contact, battery, temperature, and humidity. `WIFI`, `ZIGBEE`, and `TUYA` are identity metadata only: Stage 3 implements no discovery, gateway, broker, cloud, or physical transport.
+
+Logical commands (`setPower`, `setBrightness`, and `setSpeed`) validate Home access, declared capability support, writable capability type/range, and archive status before updating stored logical state. Sensor capabilities are read-only. Room deletion safely unassigns Devices rather than deleting them, and normal Device deletion uses soft archive. The dashboard explicitly labels Device state as logical/simulated.
+
 ## Database guarantees
 
 The initial migration adds partial unique indexes and triggers beyond Prisma's relation model. They enforce one Super Admin, at most one default Admin, an active default Admin, immutable roles, role-correct Admin/Home Owner profiles, unique session hashes, and restrictive deletion for Admins with assigned Home Owners. Normalized email is unique.

@@ -1,0 +1,11 @@
+import type { DeviceType, Prisma, Role } from "@prisma/client";
+import { prisma } from "./db";
+import { HttpError } from "./errors";
+import { homeAccess } from "./homes";
+
+type Actor = { id: string; role: Role };
+export const deviceSelect = { id: true, homeId: true, roomId: true, name: true, deviceType: true, protocol: true, manufacturer: true, model: true, externalDeviceId: true, isOnline: true, lastSeenAt: true, capabilities: true, state: true, isArchived: true, createdAt: true, updatedAt: true } as const;
+export async function deviceAccess(actor: Actor, id: string, manage = false) { const device = await prisma.device.findUnique({ where: { id }, select: { id: true, homeId: true, isArchived: true, capabilities: true, state: true } }); if (!device) throw new HttpError(404, "Device not found"); await homeAccess(actor, device.homeId, manage); return device; }
+export async function verifyRoom(homeId: string, roomId?: string | null) { if (roomId && !await prisma.room.findFirst({ where: { id: roomId, homeId }, select: { id: true } })) throw new HttpError(400, "Room must belong to the Device Home"); }
+export async function listDevices(actor: Actor, homeId?: string, roomId?: string) { if (homeId) await homeAccess(actor, homeId); const where: Prisma.DeviceWhereInput = { isArchived: false, ...(homeId ? { homeId } : {}), ...(roomId ? { roomId } : {}) }; if (!homeId) where.home = actor.role === "SUPER_ADMIN" ? {} : actor.role === "ADMIN" ? { memberships: { some: { role: "OWNER", user: { role: "HOME_OWNER", homeOwnerProfile: { assignedAdminId: actor.id } } } } } : { memberships: { some: { userId: actor.id } } }; return prisma.device.findMany({ where, select: deviceSelect, orderBy: { createdAt: "asc" } }); }
+export async function createDevice(actor: Actor, input: { homeId: string; roomId?: string | null; name: string; deviceType: DeviceType; protocol: "WIFI" | "ZIGBEE" | "TUYA"; manufacturer?: string | null; model?: string | null; externalDeviceId?: string | null; capabilities: string[]; state: Record<string, unknown> }) { await homeAccess(actor, input.homeId, true); await verifyRoom(input.homeId, input.roomId); return prisma.device.create({ data: { ...input, name: input.name.trim(), capabilities: input.capabilities, state: input.state as Prisma.InputJsonValue }, select: deviceSelect }); }

@@ -19,6 +19,20 @@ enum HomeMembershipRole {
   MEMBER
 }
 
+enum DeviceProtocol {
+  WIFI
+  ZIGBEE
+  TUYA
+}
+
+enum DeviceType {
+  LIGHT
+  SWITCH
+  FAN
+  SENSOR
+  OTHER
+}
+
 model User {
   id               String            @id @default(uuid()) @db.Uuid
   email            String
@@ -46,6 +60,7 @@ model Home {
   updatedAt   DateTime         @updatedAt
   memberships HomeMembership[]
   rooms       Room[]
+  devices     Device[]
 
   @@index([isArchived])
 }
@@ -72,9 +87,34 @@ model Room {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   home           Home     @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  devices        Device[]
 
   @@unique([homeId, normalizedName])
   @@index([homeId])
+}
+
+model Device {
+  id               String         @id @default(uuid()) @db.Uuid
+  homeId           String         @db.Uuid
+  roomId           String?        @db.Uuid
+  name             String
+  deviceType       DeviceType
+  protocol         DeviceProtocol
+  manufacturer     String?
+  model            String?
+  externalDeviceId String?
+  isOnline         Boolean        @default(false)
+  lastSeenAt       DateTime?
+  capabilities     Json
+  state            Json
+  isArchived       Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  home             Home           @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  room             Room?          @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@index([homeId, isArchived])
+  @@index([roomId, isArchived])
 }
 
 model AdminProfile {

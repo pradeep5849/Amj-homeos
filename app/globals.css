@@ -15,3 +15,6 @@ button, .button { background: #0a6042; color: white; border: 0; border-radius: 8
 .home-list { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; }
 button.secondary { background: #e4f2ed; color: #0a6042; }
 select { padding: .8rem; border: 1px solid #aebdb7; border-radius: 8px; font: inherit; background: white; }
+button.small { padding: .35rem .6rem; margin-left: .6rem; }
+li { margin: .5rem 0; }
+input[type="range"] { vertical-align: middle; margin-left: .6rem; padding: 0; }

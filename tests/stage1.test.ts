@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addHomeMemberSchema, createAdminSchema, createHomeOwnerSchema, createHomeSchema, createHomeUserSchema, createRoomSchema, normalizeRoomName, registerSchema } from "@/lib/validation";
+import { createDeviceSchema, deviceCommandSchema, updateDeviceSchema } from "@/lib/validation";
 import { canAccessHomeOwner, canCreateAdmin, canCreateHomeOwner } from "@/lib/policy";
 import { hashToken, newRawToken } from "@/lib/token";
 import fs from "node:fs";
@@ -53,4 +54,14 @@ describe("Stage 2 archive contract", () => {
     expect(readme).toContain("remain directly readable by their existing authorized members");
     expect(readme).toContain("Rooms and memberships are retained");
   });
+});
+
+describe("Stage 3 device contracts", () => {
+  const base = { homeId: "3d594650-3436-4c9b-8545-bf29624e4149", name: "Main Light", deviceType: "LIGHT", protocol: "WIFI", capabilities: ["power", "brightness"], state: { power: false, brightness: 20 } };
+  it("accepts controlled capabilities and initial state", () => expect(createDeviceSchema.parse(base).state).toEqual(base.state));
+  it("rejects undeclared state", () => expect(() => createDeviceSchema.parse({ ...base, state: { speed: 2 } })).toThrow());
+  it("rejects invalid state ranges", () => expect(() => createDeviceSchema.parse({ ...base, state: { brightness: 101 } })).toThrow());
+  it("rejects arbitrary capabilities and protocols", () => { expect(() => createDeviceSchema.parse({ ...base, capabilities: ["shell"] })).toThrow(); expect(() => createDeviceSchema.parse({ ...base, protocol: "MQTT" })).toThrow(); });
+  it("validates logical commands", () => { expect(deviceCommandSchema.parse({ command: "setPower", value: true })).toEqual({ command: "setPower", value: true }); expect(() => deviceCommandSchema.parse({ command: "setBrightness", value: 101 })).toThrow(); expect(() => deviceCommandSchema.parse({ command: "setContact", value: "open" })).toThrow(); });
+  it("prevents protocol and state mutation through metadata update", () => { expect(() => updateDeviceSchema.parse({ protocol: "TUYA" })).toThrow(); expect(() => updateDeviceSchema.parse({ state: { power: true } })).toThrow(); });
 });
