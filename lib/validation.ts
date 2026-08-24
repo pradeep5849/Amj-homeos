@@ -24,4 +24,5 @@ export const updateHomeSchema = z.object({ name: homeName.optional(), timezone: 
 export const createRoomSchema = z.object({ name: roomName }).strict();
 export const updateRoomSchema = z.object({ name: roomName }).strict();
 export const addHomeMemberSchema = z.object({ userId: z.string().uuid() }).strict();
+export const createHomeUserSchema = registerSchema.strict();
 export function normalizeRoomName(name: string) { return name.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US"); }

@@ -110,10 +110,13 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     expect(transitions.some(({ status }) => status === "fulfilled")).toBe(true);
     expect(await prisma.adminProfile.count({ where: { isDefaultAdmin: true } })).toBe(1);
 
-    const member = await createUser("HOME_OWNER");
+    const member = await createUser("HOME_USER");
+    await expect(prisma.adminProfile.create({ data: { userId: member.id, createdAt, updatedAt: createdAt } })).rejects.toThrow();
+    await expect(prisma.homeOwnerProfile.create({ data: { userId: member.id, assignedAdminId: otherAdmin.id, createdAt, updatedAt: createdAt } })).rejects.toThrow();
     const firstHome = await prisma.home.create({ data: { name: "First Home", timezone: "Asia/Kolkata", memberships: { create: { userId: homeOwner.id, role: "OWNER" } } } });
     const secondHome = await prisma.home.create({ data: { name: "Second Home", timezone: "UTC", memberships: { create: { userId: homeOwner.id, role: "OWNER" } } } });
     await expect(prisma.homeMembership.create({ data: { homeId: firstHome.id, userId: homeOwner.id, role: "MEMBER" } })).rejects.toThrow();
+    await expect(prisma.homeMembership.create({ data: { homeId: firstHome.id, userId: member.id, role: "OWNER" } })).rejects.toThrow();
     await expect(prisma.homeMembership.create({ data: { homeId: randomUUID(), userId: member.id, role: "MEMBER" } })).rejects.toThrow();
     await expect(prisma.homeMembership.create({ data: { homeId: firstHome.id, userId: randomUUID(), role: "MEMBER" } })).rejects.toThrow();
     await prisma.homeMembership.createMany({ data: [{ homeId: firstHome.id, userId: member.id, role: "MEMBER" }, { homeId: secondHome.id, userId: member.id, role: "MEMBER" }] });

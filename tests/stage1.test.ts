@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addHomeMemberSchema, createAdminSchema, createHomeOwnerSchema, createHomeSchema, createRoomSchema, normalizeRoomName, registerSchema } from "@/lib/validation";
+import { addHomeMemberSchema, createAdminSchema, createHomeOwnerSchema, createHomeSchema, createHomeUserSchema, createRoomSchema, normalizeRoomName, registerSchema } from "@/lib/validation";
 import { canAccessHomeOwner, canCreateAdmin, canCreateHomeOwner } from "@/lib/policy";
 import { hashToken, newRawToken } from "@/lib/token";
 import fs from "node:fs";
@@ -34,6 +34,7 @@ describe("Stage 2 input boundaries", () => {
   it("normalizes room names consistently", () => expect(normalizeRoomName("  KITCHEN  ")).toBe("kitchen"));
   it("rejects room field injection", () => expect(() => createRoomSchema.parse({ name: "Kitchen", homeId: "other" })).toThrow());
   it("membership input cannot choose a role", () => expect(() => addHomeMemberSchema.parse({ userId: id, role: "OWNER" })).toThrow());
+  it("Home User creation cannot choose a platform role", () => expect(() => createHomeUserSchema.parse({ name: "Wife", email: "wife@example.com", password: "secure-member-password", role: "HOME_OWNER" })).toThrow());
 });
 
 describe("database invariant migration", () => {

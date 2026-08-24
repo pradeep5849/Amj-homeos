@@ -84,7 +84,9 @@ API responses omit password hashes and session token hashes.
 
 The `/api/v1/homes` routes provision and list Homes; nested `rooms` and `members` routes manage authorized Rooms and memberships. Admins provision Homes atomically for Home Owners assigned to them, and the target receives an `OWNER` membership. One account can access multiple Homes.
 
-Member onboarding deliberately reuses an existing active `HOME_OWNER` account: an OWNER supplies only its user ID and the server always creates a `MEMBER` membership. Stage 2 does not generate passwords or invent an insecure invitation substitute. Duplicate memberships and normalized duplicate Room names are rejected by PostgreSQL.
+Platform roles and Home roles are separate. `HOME_OWNER` remains the customer/account-holder role, while `HOME_USER` is an ordinary family or caretaker account. Home memberships independently use `OWNER` and `MEMBER`.
+
+An OWNER can add an existing active `HOME_USER` (or intentionally shared `HOME_OWNER`) by user ID, always as `MEMBER`. Alternatively, `POST /api/v1/homes/:homeId/members/accounts` atomically creates a password-hashed `HOME_USER` and its `MEMBER` membership. The endpoint is OWNER-authorized, fixes both roles server-side, and creates no Admin or Home Owner profile. Public registration remains HOME_OWNER-only.
 
 ## Database guarantees
 
