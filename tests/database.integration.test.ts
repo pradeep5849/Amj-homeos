@@ -140,5 +140,16 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     expect(archivedDevice.roomId).toBeNull();
     expect(archivedDevice.state).toEqual({ power: false });
     expect(archivedDevice.isArchived).toBe(true);
+    const gateway = await prisma.gateway.create({ data: { homeId: firstHome.id, name: "Zigbee Gateway", gatewayType: "ZIGBEE", connectionType: "ETHERNET", isArchived: true } });
+    expect((await prisma.gateway.findUniqueOrThrow({ where: { id: gateway.id } })).isArchived).toBe(true);
+    await expect(prisma.gateway.create({ data: { homeId: randomUUID(), name: "Invalid", gatewayType: "ZIGBEE", connectionType: "WIFI" } })).rejects.toThrow();
+    const onboarding = await prisma.deviceOnboardingSession.create({ data: { homeId: firstHome.id, initiatedByUserId: homeOwner.id, onboardingType: "WIFI_BLE", protocol: "WIFI", expiresAt: new Date(Date.now() - 1_000) } });
+    expect(onboarding.expiresAt.getTime()).toBeLessThan(Date.now());
+    await prisma.deviceOnboardingSession.update({ where: { id: onboarding.id }, data: { status: "CANCELLED" } });
+    await expect(prisma.deviceOnboardingSession.update({ where: { id: onboarding.id }, data: { status: "PROVISIONING" } })).rejects.toThrow();
+    await prisma.deviceIntegrationIdentity.create({ data: { deviceId: device.id, provider: "WEB_BLUETOOTH", externalId: "test-only-device" } });
+    await expect(prisma.deviceIntegrationIdentity.create({ data: { deviceId: device.id, provider: "WEB_BLUETOOTH", externalId: "test-only-device" } })).rejects.toThrow();
+    const columns = await prisma.$queryRaw<{ column_name: string }[]>`SELECT column_name FROM information_schema.columns WHERE table_name = 'DeviceOnboardingSession'`;
+    expect(columns.map((column) => column.column_name)).not.toContain("wifiPassword");
   });
 });

@@ -33,34 +33,78 @@ enum DeviceType {
   OTHER
 }
 
+enum OnboardingType {
+  WIFI_BLE
+  ZIGBEE_GATEWAY
+  TUYA
+  GATEWAY
+}
+
+enum OnboardingStatus {
+  IDLE
+  PERMISSION_REQUIRED
+  BLUETOOTH_DISABLED
+  SCANNING
+  DEVICE_FOUND
+  DEVICE_SELECTED
+  PROVISIONING
+  WAITING_FOR_NETWORK
+  REGISTERING
+  SUCCESS
+  FAILED
+  UNSUPPORTED
+  CANCELLED
+  EXPIRED
+}
+
+enum ProvisioningProvider {
+  WEB_BLUETOOTH
+  GATEWAY
+  TUYA
+}
+
+enum GatewayType {
+  ZIGBEE
+  TUYA
+  MULTIPROTOCOL
+}
+
+enum GatewayConnectionType {
+  WIFI
+  ETHERNET
+}
+
 model User {
-  id               String            @id @default(uuid()) @db.Uuid
-  email            String
-  normalizedEmail  String            @unique
-  passwordHash     String
-  name             String
-  role             Role
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  adminProfile     AdminProfile?
-  homeOwnerProfile HomeOwnerProfile?
-  sessions         Session[]
-  homeMemberships  HomeMembership[]
+  id                 String                    @id @default(uuid()) @db.Uuid
+  email              String
+  normalizedEmail    String                    @unique
+  passwordHash       String
+  name               String
+  role               Role
+  isActive           Boolean                   @default(true)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  adminProfile       AdminProfile?
+  homeOwnerProfile   HomeOwnerProfile?
+  sessions           Session[]
+  homeMemberships    HomeMembership[]
+  onboardingSessions DeviceOnboardingSession[]
 
   @@index([role, isActive])
 }
 
 model Home {
-  id          String           @id @default(uuid()) @db.Uuid
-  name        String
-  timezone    String
-  isArchived  Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  memberships HomeMembership[]
-  rooms       Room[]
-  devices     Device[]
+  id                 String                    @id @default(uuid()) @db.Uuid
+  name               String
+  timezone           String
+  isArchived         Boolean                   @default(false)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  memberships        HomeMembership[]
+  rooms              Room[]
+  devices            Device[]
+  gateways           Gateway[]
+  onboardingSessions DeviceOnboardingSession[]
 
   @@index([isArchived])
 }
@@ -94,27 +138,81 @@ model Room {
 }
 
 model Device {
-  id               String         @id @default(uuid()) @db.Uuid
-  homeId           String         @db.Uuid
-  roomId           String?        @db.Uuid
-  name             String
-  deviceType       DeviceType
-  protocol         DeviceProtocol
-  manufacturer     String?
-  model            String?
-  externalDeviceId String?
-  isOnline         Boolean        @default(false)
-  lastSeenAt       DateTime?
-  capabilities     Json
-  state            Json
-  isArchived       Boolean        @default(false)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  home             Home           @relation(fields: [homeId], references: [id], onDelete: Restrict)
-  room             Room?          @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  id                    String                      @id @default(uuid()) @db.Uuid
+  homeId                String                      @db.Uuid
+  roomId                String?                     @db.Uuid
+  name                  String
+  deviceType            DeviceType
+  protocol              DeviceProtocol
+  manufacturer          String?
+  model                 String?
+  externalDeviceId      String?
+  isOnline              Boolean                     @default(false)
+  lastSeenAt            DateTime?
+  capabilities          Json
+  state                 Json
+  isArchived            Boolean                     @default(false)
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  home                  Home                        @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  room                  Room?                       @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  integrationIdentities DeviceIntegrationIdentity[]
 
   @@index([homeId, isArchived])
   @@index([roomId, isArchived])
+}
+
+model Gateway {
+  id                String                @id @default(uuid()) @db.Uuid
+  homeId            String                @db.Uuid
+  name              String
+  gatewayType       GatewayType
+  manufacturer      String?
+  model             String?
+  externalGatewayId String?
+  connectionType    GatewayConnectionType
+  isOnline          Boolean               @default(false)
+  lastSeenAt        DateTime?
+  isArchived        Boolean               @default(false)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  home              Home                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
+
+  @@index([homeId, isArchived])
+}
+
+model DeviceOnboardingSession {
+  id                   String                @id @default(uuid()) @db.Uuid
+  homeId               String                @db.Uuid
+  roomId               String?               @db.Uuid
+  initiatedByUserId    String                @db.Uuid
+  onboardingType       OnboardingType
+  protocol             DeviceProtocol
+  status               OnboardingStatus      @default(IDLE)
+  discoveredIdentifier String?
+  provider             ProvisioningProvider?
+  expiresAt            DateTime
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  home                 Home                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  initiatedBy          User                  @relation(fields: [initiatedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([homeId, status])
+  @@index([expiresAt])
+}
+
+model DeviceIntegrationIdentity {
+  id         String               @id @default(uuid()) @db.Uuid
+  deviceId   String               @db.Uuid
+  provider   ProvisioningProvider
+  externalId String
+  metadata   Json?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  device     Device               @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, externalId])
+  @@index([deviceId])
 }
 
 model AdminProfile {
