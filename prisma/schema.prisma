@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  HOME_OWNER
+}
+
+model User {
+  id               String            @id @default(uuid()) @db.Uuid
+  email            String
+  normalizedEmail  String            @unique
+  passwordHash     String
+  name             String
+  role             Role
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  adminProfile     AdminProfile?
+  homeOwnerProfile HomeOwnerProfile?
+  sessions         Session[]
+
+  @@index([role, isActive])
+}
+
+model AdminProfile {
+  userId            String             @id @db.Uuid
+  isDefaultAdmin    Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedHomeOwners HomeOwnerProfile[] @relation("AssignedAdmin")
+}
+
+model HomeOwnerProfile {
+  userId          String       @id @db.Uuid
+  assignedAdminId String       @db.Uuid
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAdmin   AdminProfile @relation("AssignedAdmin", fields: [assignedAdminId], references: [userId], onDelete: Restrict)
+
+  @@index([assignedAdminId])
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
