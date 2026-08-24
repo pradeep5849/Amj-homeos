@@ -1,0 +1,47 @@
+{
+  "name": "amj-homeos",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "vitest run tests/database.integration.test.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "bootstrap": "tsx prisma/bootstrap.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "6.12.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "next": "16.3.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitest/coverage-v8": "4.1.0",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "16.3.2",
+    "prisma": "6.12.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "4.1.0"
+  },
+  "allowScripts": {
+    "@prisma/client@6.12.0": true,
+    "@prisma/engines@6.12.0": true,
+    "esbuild@0.28.2": true,
+    "prisma@6.12.0": true,
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.12.2": true
+  }
+}
