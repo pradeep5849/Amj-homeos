@@ -44,6 +44,10 @@ export const deviceCommandSchema = z.discriminatedUnion("command", [
   z.object({ command: z.literal("setPower"), value: z.boolean() }).strict(), z.object({ command: z.literal("setBrightness"), value: z.number().int().min(0).max(100) }).strict(), z.object({ command: z.literal("setSpeed"), value: z.number().int().min(0).max(10) }).strict(),
 ]);
 export const createOnboardingSessionSchema = z.object({ roomId: z.string().uuid().nullable().optional(), onboardingType: z.enum(["WIFI_BLE", "ZIGBEE_GATEWAY", "TUYA", "GATEWAY"]) }).strict();
-export const completeOnboardingSchema = z.object({ ssid: z.string().trim().min(1).max(32).optional(), wifiPassword: z.string().min(8).max(63).optional() }).strict();
+export const completeOnboardingSchema = z.object({
+  ssid: z.string().trim().min(1).max(32).optional(), wifiPassword: z.string().min(8).max(63).optional(),
+  roomId: z.string().uuid().nullable().optional(), name: z.string().trim().min(2).max(100).optional(),
+  deviceType: z.enum(["LIGHT", "SWITCH", "FAN", "SENSOR", "OTHER"]).optional(),
+}).strict();
 export const createGatewaySchema = z.object({ homeId: z.string().uuid(), name: z.string().trim().min(2).max(100), gatewayType: z.enum(["ZIGBEE", "TUYA", "MULTIPROTOCOL"]), connectionType: z.enum(["WIFI", "ETHERNET"]), manufacturer: z.string().trim().min(1).max(100).nullable().optional(), model: z.string().trim().min(1).max(100).nullable().optional(), externalGatewayId: z.string().trim().min(1).max(255).nullable().optional() }).strict();
 export const updateGatewaySchema = z.object({ name: z.string().trim().min(2).max(100).optional(), isArchived: z.boolean().optional() }).strict().refine((v) => Object.keys(v).length > 0, "At least one change is required");

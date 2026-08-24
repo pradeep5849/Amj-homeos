@@ -102,6 +102,8 @@ The Add Device wizard separates Wi-Fi/BLE, Zigbee Gateway, Tuya, and Gateway pat
 
 Gateways are Home-scoped smart-home bridges with Wi-Fi/Ethernet router uplink metadata; they are not routers. Onboarding sessions expire and use guarded terminal states. Provider-scoped external identities prevent duplicate adoption. Production Web Bluetooth, Zigbee Gateway, and Tuya adapters return `NOT_CONFIGURED`/`REQUIRES_DEVICE_SPEC`; no BLE UUID, GATT write, Zigbee command, MQTT endpoint, Tuya call, or physical-success path exists yet.
 
+The completion flow uses one centralized transition policy mirrored by a PostgreSQL transition trigger. `NOT_CONFIGURED` is persisted as a terminal onboarding status and is also returned with a provider-specific reason code. Test-only providers exercise discovery, pairing, atomic canonical `Device` registration, and provider identity creation; their constructors reject every non-test runtime. The dashboard wizard includes controlled Wi-Fi, Zigbee, Tuya, Gateway, cancellation, and Room/Unassigned paths. Production never selects a test adapter.
+
 ## Database guarantees
 
 The initial migration adds partial unique indexes and triggers beyond Prisma's relation model. They enforce one Super Admin, at most one default Admin, an active default Admin, immutable roles, role-correct Admin/Home Owner profiles, unique session hashes, and restrictive deletion for Admins with assigned Home Owners. Normalized email is unique.

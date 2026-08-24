@@ -53,6 +53,7 @@ enum OnboardingStatus {
   SUCCESS
   FAILED
   UNSUPPORTED
+  NOT_CONFIGURED
   CANCELLED
   EXPIRED
 }

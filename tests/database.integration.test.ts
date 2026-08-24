@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient, type Role } from "@prisma/client";
+import { completeAdoption } from "@/lib/onboarding";
 
 const enabled = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -151,5 +152,30 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     await expect(prisma.deviceIntegrationIdentity.create({ data: { deviceId: device.id, provider: "WEB_BLUETOOTH", externalId: "test-only-device" } })).rejects.toThrow();
     const columns = await prisma.$queryRaw<{ column_name: string }[]>`SELECT column_name FROM information_schema.columns WHERE table_name = 'DeviceOnboardingSession'`;
     expect(columns.map((column) => column.column_name)).not.toContain("wifiPassword");
+
+    const adoptionSession = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", provider: "TUYA", status: "PROVISIONING", expiresAt: new Date(Date.now() + 60_000) } });
+    const adopted = { externalId: `tuya-${randomUUID()}`, name: "Adopted Switch", protocol: "TUYA" as const, deviceType: "SWITCH" as const, capabilities: ["power"], state: { power: false } };
+    const completion = await completeAdoption({ id: homeOwner.id, role: "HOME_OWNER" }, adoptionSession.id, { status: "SUCCESS", value: adopted }, "TUYA");
+    if (!("device" in completion)) throw new Error("Expected successful canonical adoption");
+    expect(completion.session.status).toBe("SUCCESS");
+    expect(completion.device.homeId).toBe(secondHome.id);
+    expect(await prisma.deviceIntegrationIdentity.count({ where: { deviceId: completion.device.id, provider: "TUYA", externalId: adopted.externalId } })).toBe(1);
+    const duplicateSession = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "PROVISIONING", expiresAt: new Date(Date.now() + 60_000) } });
+    await expect(completeAdoption({ id: homeOwner.id, role: "HOME_OWNER" }, duplicateSession.id, { status: "SUCCESS", value: adopted }, "TUYA")).rejects.toThrow("already registered");
+    expect(await prisma.device.count({ where: { externalDeviceId: adopted.externalId } })).toBe(1);
+
+    for (const candidate of [
+      { onboardingType: "WIFI_BLE" as const, protocol: "WIFI" as const, provider: "WEB_BLUETOOTH" as const },
+      { onboardingType: "ZIGBEE_GATEWAY" as const, protocol: "ZIGBEE" as const, provider: "GATEWAY" as const },
+    ]) {
+      const providerSession = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, roomId: room.id, initiatedByUserId: homeOwner.id, onboardingType: candidate.onboardingType, protocol: candidate.protocol, status: "PROVISIONING", expiresAt: new Date(Date.now() + 60_000) } });
+      const providerDevice = { externalId: `${candidate.protocol.toLowerCase()}-${randomUUID()}`, name: `${candidate.protocol} Switch`, protocol: candidate.protocol, deviceType: "SWITCH" as const, capabilities: ["power"], state: { power: false } };
+      const providerCompletion = await completeAdoption({ id: homeOwner.id, role: "HOME_OWNER" }, providerSession.id, { status: "SUCCESS", value: providerDevice }, candidate.provider, { roomId: room.id });
+      if (!("device" in providerCompletion)) throw new Error("Expected test provider adoption");
+      expect(providerCompletion.session.status).toBe("SUCCESS"); expect(providerCompletion.device.roomId).toBe(room.id);
+    }
+
+    const invalidTransition = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "FAILED", expiresAt: new Date(Date.now() + 60_000) } });
+    await expect(prisma.deviceOnboardingSession.update({ where: { id: invalidTransition.id }, data: { status: "SUCCESS" } })).rejects.toThrow();
   });
 });
