@@ -26,3 +26,20 @@ export const updateRoomSchema = z.object({ name: roomName }).strict();
 export const addHomeMemberSchema = z.object({ userId: z.string().uuid() }).strict();
 export const createHomeUserSchema = registerSchema.strict();
 export function normalizeRoomName(name: string) { return name.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US"); }
+
+export const capabilitySchema = z.enum(["power", "brightness", "speed", "contact", "battery", "temperature", "humidity"]);
+const stateValueSchemas = {
+  power: z.boolean(), brightness: z.number().int().min(0).max(100), speed: z.number().int().min(0).max(10),
+  contact: z.enum(["open", "closed"]), battery: z.number().min(0).max(100), temperature: z.number().min(-100).max(150), humidity: z.number().min(0).max(100),
+} as const;
+const deviceBaseSchema = z.object({
+  homeId: z.string().uuid(), roomId: z.string().uuid().nullable().optional(), name: z.string().trim().min(2).max(100),
+  deviceType: z.enum(["LIGHT", "SWITCH", "FAN", "SENSOR", "OTHER"]), protocol: z.enum(["WIFI", "ZIGBEE", "TUYA"]),
+  manufacturer: z.string().trim().min(1).max(100).nullable().optional(), model: z.string().trim().min(1).max(100).nullable().optional(), externalDeviceId: z.string().trim().min(1).max(255).nullable().optional(),
+  capabilities: z.array(capabilitySchema).min(1).max(7).refine((v) => new Set(v).size === v.length, "Duplicate capability"), state: z.record(z.string(), z.unknown()),
+}).strict();
+export const createDeviceSchema = deviceBaseSchema.superRefine((value, ctx) => { for (const [key, state] of Object.entries(value.state)) { if (!value.capabilities.includes(key as never)) ctx.addIssue({ code: "custom", path: ["state", key], message: "State capability is not declared" }); else { const parsed = stateValueSchemas[key as keyof typeof stateValueSchemas].safeParse(state); if (!parsed.success) ctx.addIssue({ code: "custom", path: ["state", key], message: "Invalid capability state" }); } } });
+export const updateDeviceSchema = z.object({ name: z.string().trim().min(2).max(100).optional(), roomId: z.string().uuid().nullable().optional(), deviceType: z.enum(["LIGHT", "SWITCH", "FAN", "SENSOR", "OTHER"]).optional(), manufacturer: z.string().trim().min(1).max(100).nullable().optional(), model: z.string().trim().min(1).max(100).nullable().optional(), externalDeviceId: z.string().trim().min(1).max(255).nullable().optional(), isArchived: z.boolean().optional() }).strict().refine((v) => Object.keys(v).length > 0, "At least one change is required");
+export const deviceCommandSchema = z.discriminatedUnion("command", [
+  z.object({ command: z.literal("setPower"), value: z.boolean() }).strict(), z.object({ command: z.literal("setBrightness"), value: z.number().int().min(0).max(100) }).strict(), z.object({ command: z.literal("setSpeed"), value: z.number().int().min(0).max(10) }).strict(),
+]);

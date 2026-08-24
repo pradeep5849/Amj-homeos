@@ -127,5 +127,18 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     await prisma.home.update({ where: { id: firstHome.id }, data: { isArchived: true } });
     expect(await prisma.room.count({ where: { homeId: firstHome.id } })).toBe(1);
     expect(await prisma.homeMembership.count({ where: { homeId: firstHome.id } })).toBe(2);
+
+    const room = await prisma.room.findFirstOrThrow({ where: { homeId: secondHome.id } });
+    const device = await prisma.device.create({ data: { homeId: firstHome.id, name: "Unassigned Light", deviceType: "LIGHT", protocol: "WIFI", capabilities: ["power"], state: { power: false } } });
+    expect(device.roomId).toBeNull();
+    await expect(prisma.device.create({ data: { homeId: randomUUID(), name: "Invalid Home", deviceType: "LIGHT", protocol: "WIFI", capabilities: ["power"], state: {} } })).rejects.toThrow();
+    await expect(prisma.device.update({ where: { id: device.id }, data: { roomId: room.id } })).rejects.toThrow();
+    const sameHomeRoom = await prisma.room.create({ data: { homeId: firstHome.id, name: "Hall", normalizedName: "hall" } });
+    await prisma.device.update({ where: { id: device.id }, data: { roomId: sameHomeRoom.id, isArchived: true } });
+    await prisma.room.delete({ where: { id: sameHomeRoom.id } });
+    const archivedDevice = await prisma.device.findUniqueOrThrow({ where: { id: device.id } });
+    expect(archivedDevice.roomId).toBeNull();
+    expect(archivedDevice.state).toEqual({ power: false });
+    expect(archivedDevice.isArchived).toBe(true);
   });
 });
