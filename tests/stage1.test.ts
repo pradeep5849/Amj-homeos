@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { addHomeMemberSchema, createAdminSchema, createHomeOwnerSchema, createHomeSchema, createHomeUserSchema, createRoomSchema, normalizeRoomName, registerSchema } from "@/lib/validation";
 import { createDeviceSchema, deviceCommandSchema, updateDeviceSchema } from "@/lib/validation";
 import { completeOnboardingSchema, createGatewaySchema, createOnboardingSessionSchema } from "@/lib/validation";
-import { gatewayProvider, tuyaProvider, webBluetoothProvider } from "@/lib/provisioning";
+import { gatewayProvider, TestDeviceProvider, tuyaProvider, webBluetoothProvider } from "@/lib/provisioning";
+import { assertOnboardingTransition } from "@/lib/onboarding";
 import { canAccessHomeOwner, canCreateAdmin, canCreateHomeOwner } from "@/lib/policy";
 import { hashToken, newRawToken } from "@/lib/token";
 import fs from "node:fs";
@@ -29,7 +30,11 @@ describe("Stage 4 fail-closed provider contracts", () => {
   it("rejects provider and URL injection", () => expect(() => createOnboardingSessionSchema.parse({ onboardingType: "WIFI_BLE", providerUrl: "https://attacker.test" })).toThrow());
   it("uses strict temporary Wi-Fi credential input", () => expect(() => completeOnboardingSchema.parse({ ssid: "Home", wifiPassword: "short", savePassword: true })).toThrow());
   it("validates controlled Gateway metadata", () => expect(createGatewaySchema.parse({ homeId: "3d594650-3436-4c9b-8545-bf29624e4149", name: "Gateway", gatewayType: "ZIGBEE", connectionType: "ETHERNET" }).gatewayType).toBe("ZIGBEE"));
-  it("production providers never report physical success", async () => { expect((await webBluetoothProvider.beginProvisioning()).status).toBe("NOT_CONFIGURED"); expect((await tuyaProvider.beginProvisioning()).code).toBe("TUYA_PROVIDER_NOT_CONFIGURED"); expect((await gatewayProvider.startPairing()).code).toBe("GATEWAY_PROVIDER_NOT_CONFIGURED"); });
+  it("production providers never report physical success", async () => { const wifi=await webBluetoothProvider.beginProvisioning(),tuya=await tuyaProvider.beginProvisioning(),gateway=await gatewayProvider.startPairing(); expect(wifi.status).toBe("NOT_CONFIGURED"); expect(tuya.status === "NOT_CONFIGURED" && tuya.code).toBe("TUYA_PROVIDER_NOT_CONFIGURED"); expect(gateway.status === "NOT_CONFIGURED" && gateway.code).toBe("GATEWAY_PROVIDER_NOT_CONFIGURED"); });
+  it("implements complete provider operations", async () => { expect(await webBluetoothProvider.supports()).toBe(false); expect((await gatewayProvider.listDiscoveredDevices()).status).toBe("NOT_CONFIGURED"); expect((await gatewayProvider.adoptDevice()).status).toBe("NOT_CONFIGURED"); expect((await webBluetoothProvider.finalize()).status).toBe("NOT_CONFIGURED"); });
+  it("rejects terminal and failed state replay", () => { expect(() => assertOnboardingTransition("SUCCESS", "SCANNING")).toThrow(); expect(() => assertOnboardingTransition("CANCELLED", "PROVISIONING")).toThrow(); expect(() => assertOnboardingTransition("EXPIRED", "REGISTERING")).toThrow(); expect(() => assertOnboardingTransition("FAILED", "SUCCESS")).toThrow(); expect(() => assertOnboardingTransition("NOT_CONFIGURED", "SUCCESS")).toThrow(); });
+  it("allows test providers only in the test process", () => { expect(new TestDeviceProvider("TUYA", { externalId: "test", name: "Test", protocol: "TUYA", deviceType: "SWITCH", capabilities: ["power"], state: { power: false } })).toBeDefined(); });
+  it("blocks test providers from a production runtime", () => { vi.stubEnv("NODE_ENV","production"); try { expect(() => new TestDeviceProvider("TUYA", { externalId: "escape", name: "Test", protocol: "TUYA", deviceType: "SWITCH", capabilities: ["power"], state: {} })).toThrow("disabled outside tests"); } finally { vi.unstubAllEnvs(); } });
 });
 
 describe("session security", () => {

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run tests/database.integration.test.ts",
+    "test:http": "tsx tests/stage4-http.integration.ts",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "bootstrap": "tsx prisma/bootstrap.ts"
