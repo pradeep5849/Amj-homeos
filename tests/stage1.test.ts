@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { addHomeMemberSchema, createAdminSchema, createHomeOwnerSchema, createHomeSchema, createHomeUserSchema, createRoomSchema, normalizeRoomName, registerSchema } from "@/lib/validation";
 import { createDeviceSchema, deviceCommandSchema, updateDeviceSchema } from "@/lib/validation";
+import { completeOnboardingSchema, createGatewaySchema, createOnboardingSessionSchema } from "@/lib/validation";
+import { gatewayProvider, tuyaProvider, webBluetoothProvider } from "@/lib/provisioning";
 import { canAccessHomeOwner, canCreateAdmin, canCreateHomeOwner } from "@/lib/policy";
 import { hashToken, newRawToken } from "@/lib/token";
 import fs from "node:fs";
@@ -20,6 +22,14 @@ describe("Stage 1 account boundaries", () => {
   it("Home Owner cannot access another customer", () => expect(canAccessHomeOwner({ id: "owner-1", role: "HOME_OWNER" }, { id: "owner-2", assignedAdminId: "admin-1" })).toBe(false));
   it("Home Owner can access itself", () => expect(canAccessHomeOwner({ id: "owner-1", role: "HOME_OWNER" }, { id: "owner-1", assignedAdminId: "admin-1" })).toBe(true));
   it("Admin creation rejects role fields", () => expect(() => createAdminSchema.parse({ ...valid, role: "SUPER_ADMIN" })).toThrow());
+});
+
+describe("Stage 4 fail-closed provider contracts", () => {
+  it("accepts controlled onboarding types", () => expect(createOnboardingSessionSchema.parse({ onboardingType: "WIFI_BLE" })).toEqual({ onboardingType: "WIFI_BLE" }));
+  it("rejects provider and URL injection", () => expect(() => createOnboardingSessionSchema.parse({ onboardingType: "WIFI_BLE", providerUrl: "https://attacker.test" })).toThrow());
+  it("uses strict temporary Wi-Fi credential input", () => expect(() => completeOnboardingSchema.parse({ ssid: "Home", wifiPassword: "short", savePassword: true })).toThrow());
+  it("validates controlled Gateway metadata", () => expect(createGatewaySchema.parse({ homeId: "3d594650-3436-4c9b-8545-bf29624e4149", name: "Gateway", gatewayType: "ZIGBEE", connectionType: "ETHERNET" }).gatewayType).toBe("ZIGBEE"));
+  it("production providers never report physical success", async () => { expect((await webBluetoothProvider.beginProvisioning()).status).toBe("NOT_CONFIGURED"); expect((await tuyaProvider.beginProvisioning()).code).toBe("TUYA_PROVIDER_NOT_CONFIGURED"); expect((await gatewayProvider.startPairing()).code).toBe("GATEWAY_PROVIDER_NOT_CONFIGURED"); });
 });
 
 describe("session security", () => {

@@ -1,0 +1,2 @@
+import { createOnboarding } from "@/lib/onboarding"; import { errorResponse } from "@/lib/errors"; import { requireUser } from "@/lib/session"; import { createOnboardingSessionSchema } from "@/lib/validation";
+export async function POST(request:Request,context:{params:Promise<{homeId:string}>}){try{const actor=await requireUser(),{homeId}=await context.params,input=createOnboardingSessionSchema.parse(await request.json());return Response.json({session:await createOnboarding(actor,homeId,input)},{status:201});}catch(e){return errorResponse(e)}}

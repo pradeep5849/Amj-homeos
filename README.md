@@ -96,6 +96,12 @@ Devices belong to a Home, may optionally belong to a same-Home Room, and declare
 
 Logical commands (`setPower`, `setBrightness`, and `setSpeed`) validate Home access, declared capability support, writable capability type/range, and archive status before updating stored logical state. Sensor capabilities are read-only. Room deletion safely unassigns Devices rather than deleting them, and normal Device deletion uses soft archive. The dashboard explicitly labels Device state as logical/simulated.
 
+### Stage 4 onboarding and Gateway foundation
+
+The Add Device wizard separates Wi-Fi/BLE, Zigbee Gateway, Tuya, and Gateway paths. Bluetooth capability is checked only after an explicit user gesture. Wi-Fi passwords use password inputs, are submitted only to the selected fail-closed provider contract, cleared from the UI, and are never stored in PostgreSQL or returned by APIs.
+
+Gateways are Home-scoped smart-home bridges with Wi-Fi/Ethernet router uplink metadata; they are not routers. Onboarding sessions expire and use guarded terminal states. Provider-scoped external identities prevent duplicate adoption. Production Web Bluetooth, Zigbee Gateway, and Tuya adapters return `NOT_CONFIGURED`/`REQUIRES_DEVICE_SPEC`; no BLE UUID, GATT write, Zigbee command, MQTT endpoint, Tuya call, or physical-success path exists yet.
+
 ## Database guarantees
 
 The initial migration adds partial unique indexes and triggers beyond Prisma's relation model. They enforce one Super Admin, at most one default Admin, an active default Admin, immutable roles, role-correct Admin/Home Owner profiles, unique session hashes, and restrictive deletion for Admins with assigned Home Owners. Normalized email is unique.

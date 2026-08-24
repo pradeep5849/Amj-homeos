@@ -1,0 +1,4 @@
+import { prisma } from '@/lib/db'; import { errorResponse,HttpError } from '@/lib/errors'; import { homeAccess } from '@/lib/homes'; import { gatewayProvider } from '@/lib/provisioning'; import { requireUser } from '@/lib/session';
+async function check(id:string,manage:boolean){const a=await requireUser(),g=await prisma.gateway.findUnique({where:{id},select:{homeId:true}});if(!g)throw new HttpError(404,'Gateway not found');await homeAccess(a,g.homeId,manage)}
+export async function POST(_r:Request,c:{params:Promise<{id:string}>}){try{const{id}=await c.params;await check(id,true);return Response.json({pairing:await gatewayProvider.startPairing()})}catch(e){return errorResponse(e)}}
+export async function GET(_r:Request,c:{params:Promise<{id:string}>}){try{const{id}=await c.params;await check(id,false);return Response.json({pairing:await gatewayProvider.getPairingStatus()})}catch(e){return errorResponse(e)}}
