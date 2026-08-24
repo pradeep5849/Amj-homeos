@@ -88,6 +88,8 @@ Platform roles and Home roles are separate. `HOME_OWNER` remains the customer/ac
 
 An OWNER can add an existing active `HOME_USER` (or intentionally shared `HOME_OWNER`) by user ID, always as `MEMBER`. Alternatively, `POST /api/v1/homes/:homeId/members/accounts` atomically creates a password-hashed `HOME_USER` and its `MEMBER` membership. The endpoint is OWNER-authorized, fixes both roles server-side, and creates no Admin or Home Owner profile. Public registration remains HOME_OWNER-only.
 
+Archiving is a soft visibility control: archived Homes are excluded from normal active lists but remain directly readable by their existing authorized members and support actors. Rooms and memberships are retained, while OWNER-level authorization is still required for management operations.
+
 ## Database guarantees
 
 The initial migration adds partial unique indexes and triggers beyond Prisma's relation model. They enforce one Super Admin, at most one default Admin, an active default Admin, immutable roles, role-correct Admin/Home Owner profiles, unique session hashes, and restrictive deletion for Admins with assigned Home Owners. Normalized email is unique.

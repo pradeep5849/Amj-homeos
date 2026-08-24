@@ -45,3 +45,12 @@ describe("database invariant migration", () => {
   it("restricts deletion of assigned Admins", () => expect(sql).toContain('REFERENCES "AdminProfile"("userId") ON DELETE RESTRICT'));
   it("uniquely indexes session token hashes", () => expect(sql).toContain('CREATE UNIQUE INDEX "Session_tokenHash_key"'));
 });
+
+describe("Stage 2 archive contract", () => {
+  it("documents authorized direct access and retained data", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    expect(readme).toContain("archived Homes are excluded from normal active lists");
+    expect(readme).toContain("remain directly readable by their existing authorized members");
+    expect(readme).toContain("Rooms and memberships are retained");
+  });
+});
