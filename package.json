@@ -17,7 +17,8 @@
     "bootstrap": "tsx prisma/bootstrap.ts",
     "test:http:stage5": "tsx tests/stage5-http.integration.ts",
     "scheduler:once": "tsx scripts-scheduler.ts",
-    "test:http:stage6": "tsx tests/stage6-http.integration.ts"
+    "test:http:stage6": "tsx tests/stage6-http.integration.ts",
+    "test:http:stage7": "tsx tests/stage7-http.integration.ts"
   },
   "dependencies": {
     "@prisma/client": "6.12.0",
