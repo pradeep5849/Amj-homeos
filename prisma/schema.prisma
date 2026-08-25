@@ -75,6 +75,34 @@ enum GatewayConnectionType {
   ETHERNET
 }
 
+enum LogicalCommand {
+  setPower
+  setBrightness
+  setSpeed
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL_FAILURE
+  FAILED
+}
+
+enum AutomationTriggerType {
+  MANUAL
+  DEVICE_STATE
+}
+
+enum TriggerOperator {
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN
+  LESS_THAN_OR_EQUAL
+}
+
 model User {
   id                 String                    @id @default(uuid()) @db.Uuid
   email              String
@@ -90,22 +118,29 @@ model User {
   sessions           Session[]
   homeMemberships    HomeMembership[]
   onboardingSessions DeviceOnboardingSession[]
+  scenesCreated      Scene[]                   @relation("SceneCreator")
+  automationsCreated Automation[]              @relation("AutomationCreator")
+  sceneExecutions    SceneExecution[]
 
   @@index([role, isActive])
 }
 
 model Home {
-  id                 String                    @id @default(uuid()) @db.Uuid
-  name               String
-  timezone           String
-  isArchived         Boolean                   @default(false)
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  memberships        HomeMembership[]
-  rooms              Room[]
-  devices            Device[]
-  gateways           Gateway[]
-  onboardingSessions DeviceOnboardingSession[]
+  id                   String                    @id @default(uuid()) @db.Uuid
+  name                 String
+  timezone             String
+  isArchived           Boolean                   @default(false)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  memberships          HomeMembership[]
+  rooms                Room[]
+  devices              Device[]
+  gateways             Gateway[]
+  onboardingSessions   DeviceOnboardingSession[]
+  scenes               Scene[]
+  automations          Automation[]
+  sceneExecutions      SceneExecution[]
+  automationExecutions AutomationExecution[]
 
   @@index([isArchived])
 }
@@ -139,25 +174,31 @@ model Room {
 }
 
 model Device {
-  id                    String                      @id @default(uuid()) @db.Uuid
-  homeId                String                      @db.Uuid
-  roomId                String?                     @db.Uuid
-  name                  String
-  deviceType            DeviceType
-  protocol              DeviceProtocol
-  manufacturer          String?
-  model                 String?
-  externalDeviceId      String?
-  isOnline              Boolean                     @default(false)
-  lastSeenAt            DateTime?
-  capabilities          Json
-  state                 Json
-  isArchived            Boolean                     @default(false)
-  createdAt             DateTime                    @default(now())
-  updatedAt             DateTime                    @updatedAt
-  home                  Home                        @relation(fields: [homeId], references: [id], onDelete: Restrict)
-  room                  Room?                       @relation(fields: [roomId], references: [id], onDelete: SetNull)
-  integrationIdentities DeviceIntegrationIdentity[]
+  id                         String                      @id @default(uuid()) @db.Uuid
+  homeId                     String                      @db.Uuid
+  roomId                     String?                     @db.Uuid
+  name                       String
+  deviceType                 DeviceType
+  protocol                   DeviceProtocol
+  manufacturer               String?
+  model                      String?
+  externalDeviceId           String?
+  isOnline                   Boolean                     @default(false)
+  lastSeenAt                 DateTime?
+  capabilities               Json
+  state                      Json
+  isArchived                 Boolean                     @default(false)
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  home                       Home                        @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  room                       Room?                       @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  integrationIdentities      DeviceIntegrationIdentity[]
+  sceneActions               SceneAction[]
+  automationTriggers         AutomationTrigger[]
+  automationActions          AutomationAction[]
+  sceneActionExecutions      SceneActionExecution[]
+  automationExecutions       AutomationExecution[]       @relation("TriggerDeviceExecutions")
+  automationActionExecutions AutomationActionExecution[]
 
   @@index([homeId, isArchived])
   @@index([roomId, isArchived])
@@ -247,4 +288,165 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model Scene {
+  id              String           @id @default(uuid()) @db.Uuid
+  homeId          String           @db.Uuid
+  name            String
+  normalizedName  String
+  description     String?
+  isEnabled       Boolean          @default(true)
+  isArchived      Boolean          @default(false)
+  createdByUserId String           @db.Uuid
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  home            Home             @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  createdBy       User             @relation("SceneCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  actions         SceneAction[]
+  executions      SceneExecution[]
+
+  @@unique([homeId, normalizedName])
+  @@index([homeId, isArchived])
+}
+
+model SceneAction {
+  id         String                 @id @default(uuid()) @db.Uuid
+  sceneId    String                 @db.Uuid
+  deviceId   String                 @db.Uuid
+  command    LogicalCommand
+  value      Json
+  sortOrder  Int
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  scene      Scene                  @relation(fields: [sceneId], references: [id], onDelete: Restrict)
+  device     Device                 @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  executions SceneActionExecution[]
+
+  @@unique([sceneId, sortOrder])
+  @@index([deviceId])
+}
+
+model SceneExecution {
+  id                String                 @id @default(uuid()) @db.Uuid
+  sceneId           String                 @db.Uuid
+  homeId            String                 @db.Uuid
+  initiatedByUserId String?                @db.Uuid
+  status            ExecutionStatus        @default(PENDING)
+  startedAt         DateTime               @default(now())
+  completedAt       DateTime?
+  errorSummary      String?
+  scene             Scene                  @relation(fields: [sceneId], references: [id], onDelete: Restrict)
+  home              Home                   @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  initiatedBy       User?                  @relation(fields: [initiatedByUserId], references: [id], onDelete: Restrict)
+  actionExecutions  SceneActionExecution[]
+
+  @@index([sceneId, startedAt])
+  @@index([homeId, startedAt])
+}
+
+model SceneActionExecution {
+  id               String          @id @default(uuid()) @db.Uuid
+  sceneExecutionId String          @db.Uuid
+  sceneActionId    String          @db.Uuid
+  deviceId         String          @db.Uuid
+  status           ExecutionStatus
+  error            String?
+  createdAt        DateTime        @default(now())
+  sceneExecution   SceneExecution  @relation(fields: [sceneExecutionId], references: [id], onDelete: Restrict)
+  sceneAction      SceneAction     @relation(fields: [sceneActionId], references: [id], onDelete: Restrict)
+  device           Device          @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@index([sceneExecutionId])
+}
+
+model Automation {
+  id              String                @id @default(uuid()) @db.Uuid
+  homeId          String                @db.Uuid
+  name            String
+  normalizedName  String
+  description     String?
+  isEnabled       Boolean               @default(true)
+  isArchived      Boolean               @default(false)
+  createdByUserId String                @db.Uuid
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  home            Home                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  createdBy       User                  @relation("AutomationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  triggers        AutomationTrigger[]
+  actions         AutomationAction[]
+  executions      AutomationExecution[]
+
+  @@unique([homeId, normalizedName])
+  @@index([homeId, isArchived, isEnabled])
+}
+
+model AutomationTrigger {
+  id           String                @id @default(uuid()) @db.Uuid
+  automationId String                @db.Uuid
+  triggerType  AutomationTriggerType
+  deviceId     String?               @db.Uuid
+  capability   String?
+  operator     TriggerOperator?
+  value        Json?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  automation   Automation            @relation(fields: [automationId], references: [id], onDelete: Restrict)
+  device       Device?               @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@index([automationId, triggerType])
+  @@index([deviceId, capability])
+}
+
+model AutomationAction {
+  id           String                      @id @default(uuid()) @db.Uuid
+  automationId String                      @db.Uuid
+  deviceId     String                      @db.Uuid
+  command      LogicalCommand
+  value        Json
+  sortOrder    Int
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  automation   Automation                  @relation(fields: [automationId], references: [id], onDelete: Restrict)
+  device       Device                      @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  executions   AutomationActionExecution[]
+
+  @@unique([automationId, sortOrder])
+  @@index([deviceId])
+}
+
+model AutomationExecution {
+  id               String                      @id @default(uuid()) @db.Uuid
+  automationId     String                      @db.Uuid
+  homeId           String                      @db.Uuid
+  triggerType      AutomationTriggerType
+  triggerDeviceId  String?                     @db.Uuid
+  status           ExecutionStatus             @default(PENDING)
+  correlationId    String                      @db.Uuid
+  chainDepth       Int                         @default(0)
+  startedAt        DateTime                    @default(now())
+  completedAt      DateTime?
+  errorSummary     String?
+  automation       Automation                  @relation(fields: [automationId], references: [id], onDelete: Restrict)
+  home             Home                        @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  triggerDevice    Device?                     @relation("TriggerDeviceExecutions", fields: [triggerDeviceId], references: [id], onDelete: Restrict)
+  actionExecutions AutomationActionExecution[]
+
+  @@index([automationId, startedAt])
+  @@index([correlationId])
+}
+
+model AutomationActionExecution {
+  id                    String              @id @default(uuid()) @db.Uuid
+  automationExecutionId String              @db.Uuid
+  automationActionId    String              @db.Uuid
+  deviceId              String              @db.Uuid
+  status                ExecutionStatus
+  error                 String?
+  createdAt             DateTime            @default(now())
+  automationExecution   AutomationExecution @relation(fields: [automationExecutionId], references: [id], onDelete: Restrict)
+  automationAction      AutomationAction    @relation(fields: [automationActionId], references: [id], onDelete: Restrict)
+  device                Device              @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@index([automationExecutionId])
 }

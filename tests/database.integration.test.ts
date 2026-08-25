@@ -175,6 +175,17 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
       expect(providerCompletion.session.status).toBe("SUCCESS"); expect(providerCompletion.device.roomId).toBe(room.id);
     }
 
+    const stage5Scene = await prisma.scene.create({ data: { homeId: secondHome.id, name: "Good Night", normalizedName: "good night", createdByUserId: homeOwner.id } });
+    const stage5Automation = await prisma.automation.create({ data: { homeId: secondHome.id, name: "Door Light", normalizedName: "door light", createdByUserId: homeOwner.id } });
+    const stage5Device = await prisma.device.create({ data: { homeId: secondHome.id, name: "Stage 5 Switch", deviceType: "SWITCH", protocol: "WIFI", capabilities: ["power"], state: { power: false } } });
+    await prisma.sceneAction.create({ data: { sceneId: stage5Scene.id, deviceId: stage5Device.id, command: "setPower", value: true, sortOrder: 0 } });
+    await expect(prisma.sceneAction.create({ data: { sceneId: stage5Scene.id, deviceId: device.id, command: "setPower", value: true, sortOrder: 1 } })).rejects.toThrow();
+    await prisma.automationTrigger.create({ data: { automationId: stage5Automation.id, triggerType: "DEVICE_STATE", deviceId: stage5Device.id, capability: "power", operator: "EQUALS", value: true } });
+    await prisma.automationAction.create({ data: { automationId: stage5Automation.id, deviceId: stage5Device.id, command: "setPower", value: false, sortOrder: 0 } });
+    await expect(prisma.automationAction.create({ data: { automationId: stage5Automation.id, deviceId: device.id, command: "setPower", value: true, sortOrder: 1 } })).rejects.toThrow();
+    await expect(prisma.automationTrigger.create({ data: { automationId: stage5Automation.id, triggerType: "DEVICE_STATE", deviceId: device.id, capability: "power", operator: "EQUALS", value: true } })).rejects.toThrow();
+    await expect(prisma.scene.create({ data: { homeId: randomUUID(), name: "Invalid", normalizedName: "invalid", createdByUserId: homeOwner.id } })).rejects.toThrow();
+
     const invalidTransition = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "FAILED", expiresAt: new Date(Date.now() + 60_000) } });
     await expect(prisma.deviceOnboardingSession.update({ where: { id: invalidTransition.id }, data: { status: "SUCCESS" } })).rejects.toThrow();
   });
