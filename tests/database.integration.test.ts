@@ -233,6 +233,14 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     const stage9Indexes=await prisma.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE tablename='HomeInvitation'`;
     expect(stage9Indexes.some(i=>i.indexname.includes('normalizedEmail_status_expiresAt'))).toBe(true);
 
+    const securityAudit=await prisma.securityAuditEvent.create({data:{userId:homeOwner.id,actorUserId:homeOwner.id,eventType:"LOGIN_SUCCESS"}});
+    expect(securityAudit.userId).toBe(homeOwner.id);
+    await prisma.loginAbuseState.create({data:{normalizedIdentifier:"db-security@example.test",failureCount:1,windowStartedAt:new Date()}});
+    await expect(prisma.loginAbuseState.create({data:{normalizedIdentifier:"db-security@example.test",failureCount:1,windowStartedAt:new Date()}})).rejects.toThrow();
+    await expect(prisma.loginAbuseState.create({data:{normalizedIdentifier:"invalid-count@example.test",failureCount:6,windowStartedAt:new Date()}})).rejects.toThrow();
+    const securityIndexes=await prisma.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE tablename='SecurityAuditEvent'`;
+    expect(securityIndexes.some(i=>i.indexname.includes('userId_occurredAt'))).toBe(true);
+
     const invalidTransition = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "FAILED", expiresAt: new Date(Date.now() + 60_000) } });
     await expect(prisma.deviceOnboardingSession.update({ where: { id: invalidTransition.id }, data: { status: "SUCCESS" } })).rejects.toThrow();
   });

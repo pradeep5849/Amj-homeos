@@ -1,0 +1,1 @@
+import{homeActivity}from'@/lib/account-security';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';export async function GET(_r:Request,c:{params:Promise<{homeId:string}>}){try{const u=await requireUser(),{homeId}=await c.params;return Response.json({activity:await homeActivity(u,homeId)})}catch(e){return errorResponse(e)}}

@@ -1,0 +1,1 @@
+import{securitySummary}from'@/lib/account-security';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';export async function GET(){try{const u=await requireUser();return Response.json({security:await securitySummary(u.id)})}catch(e){return errorResponse(e)}}

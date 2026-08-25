@@ -1,0 +1,1 @@
+import{revokeOtherSessions}from'@/lib/account-security';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';export async function POST(){try{const u=await requireUser();return Response.json({revoked:await revokeOtherSessions(u.id)})}catch(e){return errorResponse(e)}}
