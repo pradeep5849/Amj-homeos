@@ -1,0 +1,3 @@
+import{createInvitation,listHomeInvitations}from'@/lib/home-sharing';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';import{createInvitationSchema}from'@/lib/validation';
+export async function POST(r:Request,c:{params:Promise<{homeId:string}>}){try{const actor=await requireUser(),{homeId}=await c.params,input=createInvitationSchema.parse(await r.json());return Response.json(await createInvitation(actor,homeId,input.email),{status:201})}catch(e){return errorResponse(e)}}
+export async function GET(_r:Request,c:{params:Promise<{homeId:string}>}){try{const actor=await requireUser(),{homeId}=await c.params;return Response.json({invitations:await listHomeInvitations(actor,homeId)})}catch(e){return errorResponse(e)}}

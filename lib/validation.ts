@@ -91,3 +91,5 @@ export const mobileClientSchema=z.object({clientInstanceId:z.string().uuid(),pla
 export const locationReportSchema=z.object({clientInstanceId:z.string().uuid(),eventId:z.string().uuid(),eventType:z.enum(["ENTER","EXIT","LOCATION_SAMPLE"]),timestamp:z.coerce.date(),latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),accuracyMeters:z.number().min(0).max(10000)}).strict();
 export const manualPresenceSchema=z.object({status:z.enum(["HOME","AWAY","UNKNOWN"])}).strict();
 export const coordinatesSchema=z.object({latitude:z.number().min(-90).max(90).nullable(),longitude:z.number().min(-180).max(180).nullable()}).strict();
+export const createInvitationSchema=z.object({email:z.string().trim().email().max(254)}).strict();
+export const invitationActionSchema=z.object({token:z.string().min(40).max(128),action:z.enum(["ACCEPT","REJECT"])}).strict();

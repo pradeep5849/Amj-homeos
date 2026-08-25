@@ -1,0 +1,2 @@
+import{cancelInvitation}from'@/lib/home-sharing';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';
+export async function POST(_r:Request,c:{params:Promise<{homeId:string;invitationId:string}>}){try{const actor=await requireUser(),{homeId,invitationId}=await c.params;await cancelInvitation(actor,homeId,invitationId);return new Response(null,{status:204})}catch(e){return errorResponse(e)}}

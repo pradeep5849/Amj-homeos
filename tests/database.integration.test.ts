@@ -223,6 +223,16 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     await prisma.deviceTelemetry.create({data:{deviceId:telemetryDevice.id,homeId:secondHome.id,metric:"POWER_WATTS",value:1,unit:"W",recordedAt:new Date(Date.now()-91*86400000),source:"PROVIDER",provider:"OLD",quality:"MEASURED"}});expect(await retainTelemetry(new Date())).toBeGreaterThan(0);expect(await prisma.deviceEnergyDaily.count({where:{deviceId:telemetryDevice.id}})).toBe(1);
     const telemetryIndexes=await prisma.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE tablename='DeviceTelemetry'`;expect(telemetryIndexes.some(i=>i.indexname.includes('deviceId_metric_recordedAt'))).toBe(true);
 
+    const stage9Invitation=await prisma.homeInvitation.create({data:{homeId:secondHome.id,normalizedEmail:'stage9-db@example.test',role:'MEMBER',tokenHash:`hash-${randomUUID()}`,invitedByUserId:homeOwner.id,expiresAt:new Date(Date.now()+60_000)}});
+    await expect(prisma.homeInvitation.create({data:{homeId:secondHome.id,normalizedEmail:'stage9-db@example.test',role:'MEMBER',tokenHash:`hash-${randomUUID()}`,invitedByUserId:homeOwner.id,expiresAt:new Date(Date.now()+60_000)}})).rejects.toThrow();
+    await expect(prisma.homeInvitation.create({data:{homeId:secondHome.id,normalizedEmail:'owner-injection@example.test',role:'OWNER',tokenHash:`hash-${randomUUID()}`,invitedByUserId:homeOwner.id,expiresAt:new Date(Date.now()+60_000)}})).rejects.toThrow();
+    await prisma.homeSharingAudit.create({data:{homeId:secondHome.id,actorUserId:homeOwner.id,invitationId:stage9Invitation.id,eventType:'INVITATION_CREATED'}});
+    const ownerMembership=await prisma.homeMembership.findFirstOrThrow({where:{homeId:secondHome.id,role:'OWNER'}});
+    await expect(prisma.homeMembership.delete({where:{id:ownerMembership.id}})).rejects.toThrow();
+    await expect(prisma.homeMembership.update({where:{id:ownerMembership.id},data:{homeId:firstHome.id}})).rejects.toThrow();
+    const stage9Indexes=await prisma.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE tablename='HomeInvitation'`;
+    expect(stage9Indexes.some(i=>i.indexname.includes('normalizedEmail_status_expiresAt'))).toBe(true);
+
     const invalidTransition = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "FAILED", expiresAt: new Date(Date.now() + 60_000) } });
     await expect(prisma.deviceOnboardingSession.update({ where: { id: invalidTransition.id }, data: { status: "SUCCESS" } })).rejects.toThrow();
   });

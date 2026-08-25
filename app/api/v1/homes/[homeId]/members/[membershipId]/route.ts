@@ -1,5 +1,2 @@
-import { prisma } from "@/lib/db";
-import { errorResponse, HttpError } from "@/lib/errors";
-import { homeAccess } from "@/lib/homes";
-import { requireUser } from "@/lib/session";
-export async function DELETE(_request: Request, context: { params: Promise<{ homeId: string; membershipId: string }> }) { try { const actor = await requireUser(); const { homeId, membershipId } = await context.params; await homeAccess(actor, homeId, true); if (actor.role === "ADMIN") throw new HttpError(403, "Only a Home Owner or Super Admin can remove members"); const membership = await prisma.homeMembership.findFirst({ where: { id: membershipId, homeId }, select: { id: true, role: true } }); if (!membership) throw new HttpError(404, "Membership not found"); if (membership.role === "OWNER") throw new HttpError(409, "Owner membership cannot be removed"); await prisma.homeMembership.delete({ where: { id: membership.id } }); return new Response(null, { status: 204 }); } catch (error) { return errorResponse(error); } }
+import{removeMember}from'@/lib/home-sharing';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';
+export async function DELETE(_r:Request,c:{params:Promise<{homeId:string;membershipId:string}>}){try{const actor=await requireUser(),{homeId,membershipId}=await c.params;await removeMember(actor,homeId,membershipId);return new Response(null,{status:204})}catch(e){return errorResponse(e)}}
