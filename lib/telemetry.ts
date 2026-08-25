@@ -38,6 +38,16 @@ async function notifyHealth(deviceId: string, status: DeviceHealthStatus, reason
   });
 }
 
+async function activityHealth(deviceId: string): Promise<{ status: DeviceHealthStatus; reason: string }> {
+  const battery = await prisma.deviceTelemetry.findFirst({
+    where: { deviceId, metric: "BATTERY_PERCENT" },
+    orderBy: { recordedAt: "desc" },
+    select: { value: true },
+  });
+  if (battery && battery.value <= 20) return { status: "DEGRADED", reason: `Low battery: ${battery.value}%` };
+  return { status: "ONLINE", reason: "Trusted provider activity received" };
+}
+
 export async function ingestTelemetry(input: TrustedTelemetry) {
   validateReading(input);
   const device = await prisma.device.findUnique({ where: { id: input.deviceId }, select: { id: true, homeId: true, capabilities: true, isArchived: true, lastTelemetryAt: true } });
@@ -49,7 +59,8 @@ export async function ingestTelemetry(input: TrustedTelemetry) {
     const reading = await prisma.deviceTelemetry.create({ data: { deviceId: device.id, homeId: device.homeId, metric: input.metric, value: input.value, unit: METRIC_UNITS[input.metric], recordedAt: input.recordedAt, source: input.source, provider: input.provider, externalEventId: input.externalEventId, quality: input.quality ?? (input.source === "TEST" ? "TEST" : "MEASURED") } });
     if (!device.lastTelemetryAt || input.recordedAt > device.lastTelemetryAt) {
       await prisma.device.update({ where: { id: device.id }, data: { lastTelemetryAt: input.recordedAt, lastSeenAt: input.recordedAt } });
-      await notifyHealth(device.id, input.metric === "BATTERY_PERCENT" && input.value <= 20 ? "DEGRADED" : "ONLINE", input.metric === "BATTERY_PERCENT" && input.value <= 20 ? `Low battery: ${input.value}%` : "Trusted telemetry received");
+      const health = await activityHealth(device.id);
+      await notifyHealth(device.id, health.status, health.reason);
     }
     return { reading, duplicate: false };
   } catch (error) {
@@ -68,7 +79,8 @@ export async function ingestHeartbeat(input: Heartbeat) {
   if (!device || device.isArchived) throw new HttpError(404, "Active Device not found");
   if (!device.lastSeenAt || input.recordedAt > device.lastSeenAt) {
     await prisma.device.update({ where: { id: device.id }, data: { lastSeenAt: input.recordedAt } });
-    await notifyHealth(device.id, "ONLINE", "Trusted provider heartbeat received");
+    const health = await activityHealth(device.id);
+    await notifyHealth(device.id, health.status, health.reason);
   }
   return prisma.device.findUniqueOrThrow({ where: { id: device.id } });
 }
