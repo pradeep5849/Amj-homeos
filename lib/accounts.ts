@@ -53,9 +53,18 @@ export async function updateAdmin(id: string, input: { name?: string; isActive?:
 }
 
 export async function authenticate(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { normalizedEmail: normalizeEmail(email) } });
-  if (!user || !user.isActive || !(await bcrypt.compare(password, user.passwordHash))) throw new HttpError(401, "Invalid email or password");
+  const normalizedIdentifier=normalizeEmail(email),now=new Date(),user=await prisma.user.findUnique({where:{normalizedEmail:normalizedIdentifier}});
+  if(await loginLocked(normalizedIdentifier,now)){await prisma.securityAuditEvent.create({data:{userId:user?.id,eventType:"LOGIN_FAILURE"}});throw new HttpError(401,"Invalid email or password")}
+  if(!user||!user.isActive||!(await bcrypt.compare(password,user.passwordHash))){await recordLoginFailure(normalizedIdentifier,now);await prisma.securityAuditEvent.create({data:{userId:user?.id,eventType:"LOGIN_FAILURE"}});throw new HttpError(401,"Invalid email or password")}
+  await prisma.$transaction([prisma.loginAbuseState.deleteMany({where:{normalizedIdentifier}}),prisma.securityAuditEvent.create({data:{userId:user.id,actorUserId:user.id,eventType:"LOGIN_SUCCESS"}})]);
   return user;
 }
 
 export type TransactionClient = Prisma.TransactionClient;
+
+export const LOGIN_FAILURE_LIMIT=5,LOGIN_WINDOW_MS=15*60_000,LOGIN_LOCK_MS=15*60_000;
+async function loginLocked(normalizedIdentifier:string,now=new Date()){const state=await prisma.loginAbuseState.findUnique({where:{normalizedIdentifier}});return Boolean(state?.lockedUntil&&state.lockedUntil>now)}
+async function recordLoginFailure(normalizedIdentifier:string,now=new Date()){
+ const windowStart=new Date(now.getTime()-LOGIN_WINDOW_MS),lockUntil=new Date(now.getTime()+LOGIN_LOCK_MS);
+ await prisma.$executeRaw`INSERT INTO "LoginAbuseState" ("normalizedIdentifier","failureCount","windowStartedAt","lockedUntil","updatedAt") VALUES (${normalizedIdentifier},1,${now},NULL,${now}) ON CONFLICT ("normalizedIdentifier") DO UPDATE SET "failureCount"=CASE WHEN "LoginAbuseState"."windowStartedAt" < ${windowStart} THEN 1 ELSE LEAST(${LOGIN_FAILURE_LIMIT},"LoginAbuseState"."failureCount"+1) END,"windowStartedAt"=CASE WHEN "LoginAbuseState"."windowStartedAt" < ${windowStart} THEN ${now} ELSE "LoginAbuseState"."windowStartedAt" END,"lockedUntil"=CASE WHEN "LoginAbuseState"."windowStartedAt">=${windowStart} AND "LoginAbuseState"."failureCount"+1>=${LOGIN_FAILURE_LIMIT} THEN ${lockUntil} ELSE NULL END,"updatedAt"=${now}`;
+}

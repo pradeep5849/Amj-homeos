@@ -93,3 +93,4 @@ export const manualPresenceSchema=z.object({status:z.enum(["HOME","AWAY","UNKNOW
 export const coordinatesSchema=z.object({latitude:z.number().min(-90).max(90).nullable(),longitude:z.number().min(-180).max(180).nullable()}).strict();
 export const createInvitationSchema=z.object({email:z.string().trim().email().max(254)}).strict();
 export const invitationActionSchema=z.object({token:z.string().min(40).max(128),action:z.enum(["ACCEPT","REJECT"])}).strict();
+export const passwordChangeSchema=z.object({currentPassword:z.string().min(1).max(128),newPassword:z.string().min(12).max(128),confirmPassword:z.string().min(12).max(128)}).strict().refine(v=>v.newPassword===v.confirmPassword,{message:"Password confirmation does not match",path:["confirmPassword"]});

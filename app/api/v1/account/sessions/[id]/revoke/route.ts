@@ -1,0 +1,1 @@
+import{revokeSession}from'@/lib/account-security';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';export async function POST(_r:Request,c:{params:Promise<{id:string}>}){try{const u=await requireUser(),{id}=await c.params;await revokeSession(u.id,id);return new Response(null,{status:204})}catch(e){return errorResponse(e)}}

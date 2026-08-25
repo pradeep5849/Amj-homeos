@@ -25,6 +25,8 @@
     "test:http:stage8": "tsx tests/stage8-http.integration.ts"
     ,"test:http:stage9": "tsx tests/stage9-http.integration.ts"
     ,"invitations:expire": "tsx scripts-invitations-expire.ts"
+    ,"test:http:stage10": "tsx tests/stage10-http.integration.ts"
+    ,"audit:retention": "tsx scripts-audit-retention.ts"
   },
   "dependencies": {
     "@prisma/client": "6.12.0",

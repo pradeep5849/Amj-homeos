@@ -236,6 +236,15 @@ enum HomeSharingAuditType {
   MEMBER_LEFT
 }
 
+enum SecurityAuditEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGED
+  SESSION_REVOKED
+  SESSIONS_REVOKED
+}
+
 model User {
   id                         String                    @id @default(uuid()) @db.Uuid
   email                      String
@@ -266,6 +275,8 @@ model User {
   invitationsAccepted        HomeInvitation[]          @relation("InvitationAccepter")
   sharingAuditAsActor        HomeSharingAudit[]        @relation("SharingAuditActor")
   sharingAuditAsAffectedUser HomeSharingAudit[]        @relation("SharingAuditAffectedUser")
+  securityAuditEvents        SecurityAuditEvent[]      @relation("SecurityAuditUser")
+  securityAuditAsActor       SecurityAuditEvent[]      @relation("SecurityAuditActor")
 
   @@index([role, isActive])
 }
@@ -298,8 +309,35 @@ model Home {
   healthEvents         DeviceHealthEvent[]
   invitations          HomeInvitation[]
   sharingAudit         HomeSharingAudit[]
+  securityAuditEvents  SecurityAuditEvent[]
 
   @@index([isArchived])
+}
+
+model SecurityAuditEvent {
+  id          String                 @id @default(uuid()) @db.Uuid
+  userId      String?                @db.Uuid
+  homeId      String?                @db.Uuid
+  actorUserId String?                @db.Uuid
+  eventType   SecurityAuditEventType
+  occurredAt  DateTime               @default(now())
+  user        User?                  @relation("SecurityAuditUser", fields: [userId], references: [id], onDelete: Restrict)
+  actor       User?                  @relation("SecurityAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  home        Home?                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
+
+  @@index([userId, occurredAt])
+  @@index([homeId, occurredAt])
+  @@index([occurredAt])
+}
+
+model LoginAbuseState {
+  normalizedIdentifier String    @id
+  failureCount         Int       @default(0)
+  windowStartedAt      DateTime
+  lockedUntil          DateTime?
+  updatedAt            DateTime  @updatedAt
+
+  @@index([lockedUntil])
 }
 
 model HomeInvitation {

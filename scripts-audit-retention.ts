@@ -1,0 +1,1 @@
+import{retainAudit}from'./lib/account-security';retainAudit().then(x=>console.log(`Removed ${x.security} security and ${x.homeActivity} Home activity audit event(s)`)).catch(e=>{console.error(e);process.exitCode=1});

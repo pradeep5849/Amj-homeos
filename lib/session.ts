@@ -18,7 +18,7 @@ export async function createSession(userId: string) {
 export async function clearSession() {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
-  if (token) await prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
+  if (token) { const session=await prisma.session.findUnique({where:{tokenHash:hashToken(token)},select:{id:true,userId:true}}); if(session) await prisma.$transaction([prisma.session.delete({where:{id:session.id}}),prisma.securityAuditEvent.create({data:{userId:session.userId,actorUserId:session.userId,eventType:"LOGOUT"}})]); }
   store.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
 }
 
