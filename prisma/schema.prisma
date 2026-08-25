@@ -92,6 +92,7 @@ enum ExecutionStatus {
 enum AutomationTriggerType {
   MANUAL
   DEVICE_STATE
+  SCHEDULE
 }
 
 enum TriggerOperator {
@@ -103,24 +104,63 @@ enum TriggerOperator {
   LESS_THAN_OR_EQUAL
 }
 
+enum ScheduleType {
+  ONCE
+  DAILY
+  WEEKLY
+  SUNRISE
+  SUNSET
+}
+
+enum TimerTargetType {
+  DEVICE_COMMAND
+  SCENE
+}
+
+enum TimerStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum NotificationType {
+  DEVICE
+  AUTOMATION
+  SCENE
+  SCHEDULE
+  SYSTEM
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  ERROR
+}
+
 model User {
-  id                 String                    @id @default(uuid()) @db.Uuid
-  email              String
-  normalizedEmail    String                    @unique
-  passwordHash       String
-  name               String
-  role               Role
-  isActive           Boolean                   @default(true)
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  adminProfile       AdminProfile?
-  homeOwnerProfile   HomeOwnerProfile?
-  sessions           Session[]
-  homeMemberships    HomeMembership[]
-  onboardingSessions DeviceOnboardingSession[]
-  scenesCreated      Scene[]                   @relation("SceneCreator")
-  automationsCreated Automation[]              @relation("AutomationCreator")
-  sceneExecutions    SceneExecution[]
+  id                     String                    @id @default(uuid()) @db.Uuid
+  email                  String
+  normalizedEmail        String                    @unique
+  passwordHash           String
+  name                   String
+  role                   Role
+  isActive               Boolean                   @default(true)
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  adminProfile           AdminProfile?
+  homeOwnerProfile       HomeOwnerProfile?
+  sessions               Session[]
+  homeMemberships        HomeMembership[]
+  onboardingSessions     DeviceOnboardingSession[]
+  scenesCreated          Scene[]                   @relation("SceneCreator")
+  automationsCreated     Automation[]              @relation("AutomationCreator")
+  sceneExecutions        SceneExecution[]
+  timersCreated          Timer[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
 
   @@index([role, isActive])
 }
@@ -141,6 +181,10 @@ model Home {
   automations          Automation[]
   sceneExecutions      SceneExecution[]
   automationExecutions AutomationExecution[]
+  timers               Timer[]
+  notifications        Notification[]
+  latitude             Float?
+  longitude            Float?
 
   @@index([isArchived])
 }
@@ -199,6 +243,7 @@ model Device {
   sceneActionExecutions      SceneActionExecution[]
   automationExecutions       AutomationExecution[]       @relation("TriggerDeviceExecutions")
   automationActionExecutions AutomationActionExecution[]
+  timers                     Timer[]
 
   @@index([homeId, isArchived])
   @@index([roomId, isArchived])
@@ -305,6 +350,7 @@ model Scene {
   createdBy       User             @relation("SceneCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   actions         SceneAction[]
   executions      SceneExecution[]
+  timers          Timer[]
 
   @@unique([homeId, normalizedName])
   @@index([homeId, isArchived])
@@ -376,6 +422,7 @@ model Automation {
   triggers        AutomationTrigger[]
   actions         AutomationAction[]
   executions      AutomationExecution[]
+  schedules       AutomationSchedule[]
 
   @@unique([homeId, normalizedName])
   @@index([homeId, isArchived, isEnabled])
@@ -449,4 +496,83 @@ model AutomationActionExecution {
   device                Device              @relation(fields: [deviceId], references: [id], onDelete: Restrict)
 
   @@index([automationExecutionId])
+}
+
+model AutomationSchedule {
+  id               String       @id @default(uuid()) @db.Uuid
+  automationId     String       @db.Uuid
+  scheduleType     ScheduleType
+  localTime        String?
+  daysOfWeek       Json?
+  offsetMinutes    Int?
+  runAt            DateTime?
+  timezoneSnapshot String
+  isEnabled        Boolean      @default(true)
+  nextRunAt        DateTime?
+  lastRunAt        DateTime?
+  claimedAt        DateTime?
+  claimToken       String?      @db.Uuid
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  automation       Automation   @relation(fields: [automationId], references: [id], onDelete: Restrict)
+
+  @@index([isEnabled, nextRunAt])
+  @@index([claimedAt])
+}
+
+model Timer {
+  id              String          @id @default(uuid()) @db.Uuid
+  homeId          String          @db.Uuid
+  createdByUserId String          @db.Uuid
+  targetType      TimerTargetType
+  deviceId        String?         @db.Uuid
+  sceneId         String?         @db.Uuid
+  command         LogicalCommand?
+  value           Json?
+  runAt           DateTime
+  status          TimerStatus     @default(PENDING)
+  claimedAt       DateTime?
+  claimToken      String?         @db.Uuid
+  createdAt       DateTime        @default(now())
+  executedAt      DateTime?
+  cancelledAt     DateTime?
+  errorSummary    String?
+  home            Home            @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  createdBy       User            @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  device          Device?         @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  scene           Scene?          @relation(fields: [sceneId], references: [id], onDelete: Restrict)
+
+  @@index([status, runAt])
+  @@index([claimedAt])
+  @@index([homeId, status])
+}
+
+model Notification {
+  id        String               @id @default(uuid()) @db.Uuid
+  userId    String               @db.Uuid
+  homeId    String?              @db.Uuid
+  type      NotificationType
+  title     String
+  body      String
+  severity  NotificationSeverity @default(INFO)
+  isRead    Boolean              @default(false)
+  createdAt DateTime             @default(now())
+  readAt    DateTime?
+  metadata  Json?
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  home      Home?                @relation(fields: [homeId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isRead, createdAt])
+  @@index([homeId, createdAt])
+}
+
+model NotificationPreference {
+  userId                  String   @id @db.Uuid
+  inAppEnabled            Boolean  @default(true)
+  deviceEventsEnabled     Boolean  @default(true)
+  automationEventsEnabled Boolean  @default(true)
+  scheduleEventsEnabled   Boolean  @default(true)
+  systemEventsEnabled     Boolean  @default(true)
+  updatedAt               DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
