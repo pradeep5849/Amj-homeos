@@ -51,3 +51,20 @@ export const completeOnboardingSchema = z.object({
 }).strict();
 export const createGatewaySchema = z.object({ homeId: z.string().uuid(), name: z.string().trim().min(2).max(100), gatewayType: z.enum(["ZIGBEE", "TUYA", "MULTIPROTOCOL"]), connectionType: z.enum(["WIFI", "ETHERNET"]), manufacturer: z.string().trim().min(1).max(100).nullable().optional(), model: z.string().trim().min(1).max(100).nullable().optional(), externalGatewayId: z.string().trim().min(1).max(255).nullable().optional() }).strict();
 export const updateGatewaySchema = z.object({ name: z.string().trim().min(2).max(100).optional(), isArchived: z.boolean().optional() }).strict().refine((v) => Object.keys(v).length > 0, "At least one change is required");
+
+const stage5Name=z.string().trim().min(2).max(100), description=z.string().trim().max(500).nullable().optional();
+export const createSceneSchema=z.object({name:stage5Name,description,isEnabled:z.boolean().optional()}).strict();
+export const updateSceneSchema=z.object({name:stage5Name.optional(),description,isEnabled:z.boolean().optional(),isArchived:z.boolean().optional()}).strict().refine(v=>Object.keys(v).length>0,"At least one change is required");
+export const logicalActionSchema=z.discriminatedUnion("command",[
+ z.object({deviceId:z.string().uuid(),command:z.literal("setPower"),value:z.boolean(),sortOrder:z.number().int().min(0).max(1000)}).strict(),
+ z.object({deviceId:z.string().uuid(),command:z.literal("setBrightness"),value:z.number().int().min(0).max(100),sortOrder:z.number().int().min(0).max(1000)}).strict(),
+ z.object({deviceId:z.string().uuid(),command:z.literal("setSpeed"),value:z.number().int().min(0).max(10),sortOrder:z.number().int().min(0).max(1000)}).strict(),
+]);
+export const updateLogicalActionSchema=logicalActionSchema;
+export const createAutomationSchema=z.object({name:stage5Name,description,isEnabled:z.boolean().optional()}).strict();
+export const updateAutomationSchema=z.object({name:stage5Name.optional(),description,isEnabled:z.boolean().optional(),isArchived:z.boolean().optional()}).strict().refine(v=>Object.keys(v).length>0,"At least one change is required");
+const capability=z.enum(["power","brightness","speed","contact","battery","temperature","humidity"]),operator=z.enum(["EQUALS","NOT_EQUALS","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL"]);
+export const automationTriggerSchema=z.discriminatedUnion("triggerType",[
+ z.object({triggerType:z.literal("MANUAL")}).strict(),
+ z.object({triggerType:z.literal("DEVICE_STATE"),deviceId:z.string().uuid(),capability,operator,value:z.union([z.boolean(),z.number(),z.enum(["open","closed"])])}).strict().superRefine((v,c)=>{const numeric=["brightness","speed","battery","temperature","humidity"].includes(v.capability);if(!numeric&&!['EQUALS','NOT_EQUALS'].includes(v.operator))c.addIssue({code:'custom',message:'Operator is incompatible with capability',path:['operator']});if(v.capability==='power'&&typeof v.value!=='boolean')c.addIssue({code:'custom',message:'Power requires boolean',path:['value']});if(v.capability==='contact'&&!['open','closed'].includes(String(v.value)))c.addIssue({code:'custom',message:'Contact requires open or closed',path:['value']});if(numeric&&typeof v.value!=='number')c.addIssue({code:'custom',message:'Numeric capability requires number',path:['value']})}),
+]);

@@ -1,0 +1,1 @@
+import{errorResponse}from"@/lib/errors";import{executeScene}from"@/lib/scenes";import{requireUser}from"@/lib/session";export async function POST(_r:Request,c:{params:Promise<{id:string}>}){try{const a=await requireUser(),{id}=await c.params;return Response.json({execution:await executeScene(a,id)})}catch(e){return errorResponse(e)}}

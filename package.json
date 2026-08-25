@@ -14,7 +14,8 @@
     "test:http": "tsx tests/stage4-http.integration.ts",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
-    "bootstrap": "tsx prisma/bootstrap.ts"
+    "bootstrap": "tsx prisma/bootstrap.ts",
+    "test:http:stage5": "tsx tests/stage5-http.integration.ts"
   },
   "dependencies": {
     "@prisma/client": "6.12.0",

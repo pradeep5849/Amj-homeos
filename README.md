@@ -127,3 +127,9 @@ For a disposable PostgreSQL database, apply migrations to it, set `DATABASE_TEST
 ## Stage 2 limitations
 
 Stage 2 adds Homes, Home memberships, Rooms, and their authorization only. Devices, Wi-Fi, Zigbee, Zigbee2MQTT, MQTT, Tuya, Bluetooth, Home Assistant, scenes, automation, schedules, notifications, subscriptions, and billing remain intentionally deferred.
+
+### Stage 5 Scenes and Automation Rules
+
+Scenes contain deterministic ordered actions and execute through the same validated logical Device command service used by direct commands. Automations support only `MANUAL` and trusted `DEVICE_STATE` triggers, controlled typed operators, ordered logical actions, correlation IDs, per-chain deduplication, and a maximum chain depth of five. Scene and Automation definitions are soft-archived; execution history is retained with restrictive foreign keys and honest success, partial-failure, or failure status. PostgreSQL guards prevent cross-Home trigger/action targets.
+
+Stage 5 changes logical HomeOS Device state only. Physical Wi-Fi BLE, Zigbee, and Tuya providers remain `NOT_CONFIGURED`; future physical transports will use this same command interface. No scheduler, geofence, webhook, voice, MQTT, or hardware transport is included.
