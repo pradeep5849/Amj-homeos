@@ -213,6 +213,11 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     await ingestTelemetry({deviceId:telemetryDevice.id,metric:"ENERGY_WH",value:50,recordedAt:new Date(),source:"PROVIDER",provider:"DB_TEST",externalEventId:randomUUID()});
     await ingestHeartbeat({deviceId:telemetryDevice.id,recordedAt:new Date(),provider:"DB_TEST"});
     expect((await prisma.device.findUniqueOrThrow({where:{id:telemetryDevice.id}})).healthStatus).toBe("ONLINE");
+    await ingestTelemetry({deviceId:telemetryDevice.id,metric:"BATTERY_PERCENT",value:15,recordedAt:new Date(Date.now()+1),source:"PROVIDER",provider:"DB_TEST",externalEventId:randomUUID()});
+    await ingestHeartbeat({deviceId:telemetryDevice.id,recordedAt:new Date(Date.now()+2),provider:"DB_TEST"});
+    expect((await prisma.device.findUniqueOrThrow({where:{id:telemetryDevice.id}})).healthStatus).toBe("DEGRADED");
+    await ingestTelemetry({deviceId:telemetryDevice.id,metric:"BATTERY_PERCENT",value:21,recordedAt:new Date(Date.now()+3),source:"PROVIDER",provider:"DB_TEST",externalEventId:randomUUID()});
+    expect((await prisma.device.findUniqueOrThrow({where:{id:telemetryDevice.id}})).healthStatus).toBe("ONLINE");
     const aggregate=await aggregateEnergyDay(telemetryDevice.id,new Date());expect(aggregate.measuredWh).toBe(50);
     const competing=await Promise.all([aggregateEnergyDay(telemetryDevice.id,new Date()),aggregateEnergyDay(telemetryDevice.id,new Date())]);expect(competing).toHaveLength(2);expect(await prisma.deviceEnergyDaily.count({where:{deviceId:telemetryDevice.id}})).toBe(1);
     await prisma.deviceTelemetry.create({data:{deviceId:telemetryDevice.id,homeId:secondHome.id,metric:"POWER_WATTS",value:1,unit:"W",recordedAt:new Date(Date.now()-91*86400000),source:"PROVIDER",provider:"OLD",quality:"MEASURED"}});expect(await retainTelemetry(new Date())).toBeGreaterThan(0);expect(await prisma.deviceEnergyDaily.count({where:{deviceId:telemetryDevice.id}})).toBe(1);
