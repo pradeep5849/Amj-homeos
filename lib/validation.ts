@@ -67,6 +67,8 @@ const capability=z.enum(["power","brightness","speed","contact","battery","tempe
 export const automationTriggerSchema=z.discriminatedUnion("triggerType",[
  z.object({triggerType:z.literal("MANUAL")}).strict(),
  z.object({triggerType:z.literal("DEVICE_STATE"),deviceId:z.string().uuid(),capability,operator,value:z.union([z.boolean(),z.number(),z.enum(["open","closed"])])}).strict().superRefine((v,c)=>{const numeric=["brightness","speed","battery","temperature","humidity"].includes(v.capability);if(!numeric&&!['EQUALS','NOT_EQUALS'].includes(v.operator))c.addIssue({code:'custom',message:'Operator is incompatible with capability',path:['operator']});if(v.capability==='power'&&typeof v.value!=='boolean')c.addIssue({code:'custom',message:'Power requires boolean',path:['value']});if(v.capability==='contact'&&!['open','closed'].includes(String(v.value)))c.addIssue({code:'custom',message:'Contact requires open or closed',path:['value']});if(numeric&&typeof v.value!=='number')c.addIssue({code:'custom',message:'Numeric capability requires number',path:['value']})}),
+ z.object({triggerType:z.enum(["PRESENCE_HOME","PRESENCE_AWAY"]),userId:z.string().uuid()}).strict(),
+ z.object({triggerType:z.enum(["EVERYONE_AWAY","ANYONE_HOME"])}).strict(),
 ]);
 
 const scheduleBase={isEnabled:z.boolean().optional(),offsetMinutes:z.number().int().min(-720).max(720).optional()};
@@ -83,5 +85,9 @@ export const createTimerSchema=z.union([
  z.object({targetType:z.literal("DEVICE_COMMAND"),deviceId:z.string().uuid(),runAt:z.coerce.date(),command:z.literal("setSpeed"),value:z.number().int().min(0).max(10)}).strict(),
  z.object({targetType:z.literal("SCENE"),sceneId:z.string().uuid(),runAt:z.coerce.date()}).strict(),
 ]);
-export const notificationPreferenceSchema=z.object({inAppEnabled:z.boolean().optional(),deviceEventsEnabled:z.boolean().optional(),automationEventsEnabled:z.boolean().optional(),scheduleEventsEnabled:z.boolean().optional(),systemEventsEnabled:z.boolean().optional()}).strict().refine(v=>Object.keys(v).length>0);
+export const notificationPreferenceSchema=z.object({inAppEnabled:z.boolean().optional(),deviceEventsEnabled:z.boolean().optional(),automationEventsEnabled:z.boolean().optional(),scheduleEventsEnabled:z.boolean().optional(),systemEventsEnabled:z.boolean().optional(),pushEnabled:z.boolean().optional(),presenceEventsEnabled:z.boolean().optional()}).strict().refine(v=>Object.keys(v).length>0);
+export const geofenceSchema=z.object({name:z.string().trim().min(2).max(100),latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),radiusMeters:z.number().int().min(50).max(2000),isEnabled:z.boolean().optional()}).strict();
+export const mobileClientSchema=z.object({clientInstanceId:z.string().uuid(),platform:z.enum(["ANDROID","IOS","WEB"]),appVersion:z.string().trim().max(30).optional(),deviceLabel:z.string().trim().max(100).optional(),pushProvider:z.enum(["FCM","APNS","WEB_PUSH"]).optional(),pushToken:z.string().min(20).max(4096).optional()}).strict();
+export const locationReportSchema=z.object({clientInstanceId:z.string().uuid(),eventId:z.string().uuid(),eventType:z.enum(["ENTER","EXIT","LOCATION_SAMPLE"]),timestamp:z.coerce.date(),latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),accuracyMeters:z.number().min(0).max(10000)}).strict();
+export const manualPresenceSchema=z.object({status:z.enum(["HOME","AWAY","UNKNOWN"])}).strict();
 export const coordinatesSchema=z.object({latitude:z.number().min(-90).max(90).nullable(),longitude:z.number().min(-180).max(180).nullable()}).strict();

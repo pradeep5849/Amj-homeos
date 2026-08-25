@@ -196,6 +196,12 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     await expect(prisma.notification.create({ data: { userId: randomUUID(), type: "SYSTEM", title: "Invalid", body: "Invalid" } })).rejects.toThrow();
     const scheduleIndexes=await prisma.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE tablename='AutomationSchedule'`;expect(scheduleIndexes.some(i=>i.indexname.includes('nextRunAt'))).toBe(true);
 
+    const presence=await prisma.homePresence.create({data:{homeId:secondHome.id,userId:homeOwner.id,status:"HOME",source:"MANUAL"}});expect(presence.status).toBe("HOME");await expect(prisma.homePresence.create({data:{homeId:secondHome.id,userId:homeOwner.id}})).rejects.toThrow();await expect(prisma.homePresence.create({data:{homeId:firstHome.id,userId:otherAdmin.id}})).rejects.toThrow();
+    const fence=await prisma.homeGeofence.create({data:{homeId:secondHome.id,name:"Home",latitude:28.6,longitude:77.2,radiusMeters:150,createdByUserId:homeOwner.id}});expect(fence.homeId).toBe(secondHome.id);
+    const client=await prisma.mobileClient.create({data:{userId:homeOwner.id,clientInstanceId:randomUUID(),platform:"ANDROID"}});await expect(prisma.mobileClient.create({data:{userId:homeOwner.id,clientInstanceId:client.clientInstanceId,platform:"ANDROID"}})).rejects.toThrow();
+    const event=await prisma.presenceEvent.create({data:{homeId:secondHome.id,userId:homeOwner.id,mobileClientId:client.id,eventId:randomUUID(),previousStatus:"HOME",newStatus:"AWAY",source:"GEOFENCE",eventType:"EXIT",occurredAt:new Date(),distanceBand:"OUTSIDE"}});expect(event).not.toHaveProperty("latitude");
+    const notification=await prisma.notification.create({data:{userId:homeOwner.id,type:"SYSTEM",title:"Push",body:"Safe"}});await prisma.notificationDelivery.create({data:{notificationId:notification.id,mobileClientId:client.id,channel:"PUSH",status:"NOT_CONFIGURED",provider:"FCM"}});
+
     const invalidTransition = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "FAILED", expiresAt: new Date(Date.now() + 60_000) } });
     await expect(prisma.deviceOnboardingSession.update({ where: { id: invalidTransition.id }, data: { status: "SUCCESS" } })).rejects.toThrow();
   });

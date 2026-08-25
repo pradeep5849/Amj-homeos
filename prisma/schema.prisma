@@ -93,6 +93,54 @@ enum AutomationTriggerType {
   MANUAL
   DEVICE_STATE
   SCHEDULE
+  PRESENCE_HOME
+  PRESENCE_AWAY
+  EVERYONE_AWAY
+  ANYONE_HOME
+}
+
+enum PresenceStatus {
+  HOME
+  AWAY
+  UNKNOWN
+}
+
+enum PresenceSource {
+  MANUAL
+  GEOFENCE
+  SYSTEM
+}
+
+enum PresenceEventType {
+  ENTER
+  EXIT
+  LOCATION_SAMPLE
+  MANUAL
+}
+
+enum MobilePlatform {
+  ANDROID
+  IOS
+  WEB
+}
+
+enum PushProvider {
+  FCM
+  APNS
+  WEB_PUSH
+}
+
+enum DeliveryChannel {
+  IN_APP
+  PUSH
+}
+
+enum DeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  NOT_CONFIGURED
+  SKIPPED
 }
 
 enum TriggerOperator {
@@ -141,26 +189,31 @@ enum NotificationSeverity {
 }
 
 model User {
-  id                     String                    @id @default(uuid()) @db.Uuid
-  email                  String
-  normalizedEmail        String                    @unique
-  passwordHash           String
-  name                   String
-  role                   Role
-  isActive               Boolean                   @default(true)
-  createdAt              DateTime                  @default(now())
-  updatedAt              DateTime                  @updatedAt
-  adminProfile           AdminProfile?
-  homeOwnerProfile       HomeOwnerProfile?
-  sessions               Session[]
-  homeMemberships        HomeMembership[]
-  onboardingSessions     DeviceOnboardingSession[]
-  scenesCreated          Scene[]                   @relation("SceneCreator")
-  automationsCreated     Automation[]              @relation("AutomationCreator")
-  sceneExecutions        SceneExecution[]
-  timersCreated          Timer[]
-  notifications          Notification[]
-  notificationPreference NotificationPreference?
+  id                         String                    @id @default(uuid()) @db.Uuid
+  email                      String
+  normalizedEmail            String                    @unique
+  passwordHash               String
+  name                       String
+  role                       Role
+  isActive                   Boolean                   @default(true)
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+  adminProfile               AdminProfile?
+  homeOwnerProfile           HomeOwnerProfile?
+  sessions                   Session[]
+  homeMemberships            HomeMembership[]
+  onboardingSessions         DeviceOnboardingSession[]
+  scenesCreated              Scene[]                   @relation("SceneCreator")
+  automationsCreated         Automation[]              @relation("AutomationCreator")
+  sceneExecutions            SceneExecution[]
+  timersCreated              Timer[]
+  notifications              Notification[]
+  notificationPreference     NotificationPreference?
+  presences                  HomePresence[]
+  presenceEvents             PresenceEvent[]
+  mobileClients              MobileClient[]
+  geofencesCreated           HomeGeofence[]
+  presenceAutomationTriggers AutomationTrigger[]
 
   @@index([role, isActive])
 }
@@ -185,6 +238,9 @@ model Home {
   notifications        Notification[]
   latitude             Float?
   longitude            Float?
+  presences            HomePresence[]
+  presenceEvents       PresenceEvent[]
+  geofences            HomeGeofence[]
 
   @@index([isArchived])
 }
@@ -433,6 +489,7 @@ model AutomationTrigger {
   automationId String                @db.Uuid
   triggerType  AutomationTriggerType
   deviceId     String?               @db.Uuid
+  userId       String?               @db.Uuid
   capability   String?
   operator     TriggerOperator?
   value        Json?
@@ -440,6 +497,7 @@ model AutomationTrigger {
   updatedAt    DateTime              @updatedAt
   automation   Automation            @relation(fields: [automationId], references: [id], onDelete: Restrict)
   device       Device?               @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  user         User?                 @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([automationId, triggerType])
   @@index([deviceId, capability])
@@ -548,19 +606,20 @@ model Timer {
 }
 
 model Notification {
-  id        String               @id @default(uuid()) @db.Uuid
-  userId    String               @db.Uuid
-  homeId    String?              @db.Uuid
-  type      NotificationType
-  title     String
-  body      String
-  severity  NotificationSeverity @default(INFO)
-  isRead    Boolean              @default(false)
-  createdAt DateTime             @default(now())
-  readAt    DateTime?
-  metadata  Json?
-  user      User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
-  home      Home?                @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  id         String                 @id @default(uuid()) @db.Uuid
+  userId     String                 @db.Uuid
+  homeId     String?                @db.Uuid
+  type       NotificationType
+  title      String
+  body       String
+  severity   NotificationSeverity   @default(INFO)
+  isRead     Boolean                @default(false)
+  createdAt  DateTime               @default(now())
+  readAt     DateTime?
+  metadata   Json?
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  home       Home?                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  deliveries NotificationDelivery[]
 
   @@index([userId, isRead, createdAt])
   @@index([homeId, createdAt])
@@ -573,6 +632,103 @@ model NotificationPreference {
   automationEventsEnabled Boolean  @default(true)
   scheduleEventsEnabled   Boolean  @default(true)
   systemEventsEnabled     Boolean  @default(true)
+  pushEnabled             Boolean  @default(false)
+  presenceEventsEnabled   Boolean  @default(true)
   updatedAt               DateTime @updatedAt
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HomePresence {
+  id             String         @id @default(uuid()) @db.Uuid
+  homeId         String         @db.Uuid
+  userId         String         @db.Uuid
+  status         PresenceStatus @default(UNKNOWN)
+  source         PresenceSource @default(SYSTEM)
+  lastChangedAt  DateTime       @default(now())
+  lastReportedAt DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  home           Home           @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([homeId, userId])
+  @@index([homeId, status])
+}
+
+model HomeGeofence {
+  id              String   @id @default(uuid()) @db.Uuid
+  homeId          String   @db.Uuid
+  name            String
+  latitude        Float
+  longitude       Float
+  radiusMeters    Int
+  isEnabled       Boolean  @default(true)
+  createdByUserId String   @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  home            Home     @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  createdBy       User     @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([homeId, isEnabled])
+}
+
+model MobileClient {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  userId             String                 @db.Uuid
+  clientInstanceId   String
+  platform           MobilePlatform
+  appVersion         String?
+  deviceLabel        String?
+  pushProvider       PushProvider?
+  pushTokenEncrypted String?
+  isActive           Boolean                @default(true)
+  lastSeenAt         DateTime               @default(now())
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  user               User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  events             PresenceEvent[]
+  deliveries         NotificationDelivery[]
+
+  @@unique([userId, clientInstanceId])
+  @@index([userId, isActive])
+}
+
+model PresenceEvent {
+  id             String            @id @default(uuid()) @db.Uuid
+  homeId         String            @db.Uuid
+  userId         String            @db.Uuid
+  mobileClientId String?           @db.Uuid
+  eventId        String?
+  previousStatus PresenceStatus
+  newStatus      PresenceStatus
+  source         PresenceSource
+  eventType      PresenceEventType
+  occurredAt     DateTime
+  receivedAt     DateTime          @default(now())
+  accuracyMeters Float?
+  distanceBand   String?
+  correlationId  String?           @db.Uuid
+  home           Home              @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  mobileClient   MobileClient?     @relation(fields: [mobileClientId], references: [id], onDelete: Restrict)
+
+  @@unique([mobileClientId, eventId])
+  @@index([homeId, userId, occurredAt])
+}
+
+model NotificationDelivery {
+  id             String          @id @default(uuid()) @db.Uuid
+  notificationId String          @db.Uuid
+  mobileClientId String          @db.Uuid
+  channel        DeliveryChannel
+  status         DeliveryStatus
+  provider       PushProvider?
+  attemptedAt    DateTime        @default(now())
+  deliveredAt    DateTime?
+  errorCode      String?
+  notification   Notification    @relation(fields: [notificationId], references: [id], onDelete: Restrict)
+  mobileClient   MobileClient    @relation(fields: [mobileClientId], references: [id], onDelete: Restrict)
+
+  @@index([status, attemptedAt])
+  @@index([notificationId])
 }
