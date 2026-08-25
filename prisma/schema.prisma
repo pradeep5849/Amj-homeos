@@ -188,6 +188,36 @@ enum NotificationSeverity {
   ERROR
 }
 
+enum TelemetryMetric {
+  POWER_WATTS
+  ENERGY_WH
+  VOLTAGE_VOLTS
+  CURRENT_AMPS
+  TEMPERATURE_C
+  HUMIDITY_PERCENT
+  BATTERY_PERCENT
+  SIGNAL_RSSI_DBM
+}
+
+enum TelemetrySource {
+  PROVIDER
+  SYSTEM
+  TEST
+}
+
+enum TelemetryQuality {
+  MEASURED
+  ESTIMATED
+  TEST
+}
+
+enum DeviceHealthStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+  UNKNOWN
+}
+
 model User {
   id                         String                    @id @default(uuid()) @db.Uuid
   email                      String
@@ -241,6 +271,9 @@ model Home {
   presences            HomePresence[]
   presenceEvents       PresenceEvent[]
   geofences            HomeGeofence[]
+  telemetry            DeviceTelemetry[]
+  energyDaily          DeviceEnergyDaily[]
+  healthEvents         DeviceHealthEvent[]
 
   @@index([isArchived])
 }
@@ -300,6 +333,13 @@ model Device {
   automationExecutions       AutomationExecution[]       @relation("TriggerDeviceExecutions")
   automationActionExecutions AutomationActionExecution[]
   timers                     Timer[]
+  telemetry                  DeviceTelemetry[]
+  energyDaily                DeviceEnergyDaily[]
+  healthEvents               DeviceHealthEvent[]
+  healthStatus               DeviceHealthStatus          @default(UNKNOWN)
+  lastTelemetryAt            DateTime?
+  lastHealthChangeAt         DateTime?
+  healthReason               String?
 
   @@index([homeId, isArchived])
   @@index([roomId, isArchived])
@@ -731,4 +771,58 @@ model NotificationDelivery {
 
   @@index([status, attemptedAt])
   @@index([notificationId])
+}
+
+model DeviceTelemetry {
+  id              String           @id @default(uuid()) @db.Uuid
+  deviceId        String           @db.Uuid
+  homeId          String           @db.Uuid
+  metric          TelemetryMetric
+  value           Float
+  unit            String
+  recordedAt      DateTime
+  receivedAt      DateTime         @default(now())
+  source          TelemetrySource
+  provider        String
+  externalEventId String?
+  quality         TelemetryQuality
+  createdAt       DateTime         @default(now())
+  device          Device           @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  home            Home             @relation(fields: [homeId], references: [id], onDelete: Restrict)
+
+  @@unique([deviceId, provider, source, externalEventId])
+  @@index([deviceId, metric, recordedAt])
+  @@index([homeId, recordedAt])
+}
+
+model DeviceEnergyDaily {
+  id             String   @id @default(uuid()) @db.Uuid
+  deviceId       String   @db.Uuid
+  homeId         String   @db.Uuid
+  localDate      DateTime @db.Date
+  timezone       String
+  measuredWh     Float?
+  estimatedWh    Float?
+  peakPowerWatts Float?
+  sampleCount    Int      @default(0)
+  calculatedAt   DateTime @default(now())
+  device         Device   @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  home           Home     @relation(fields: [homeId], references: [id], onDelete: Restrict)
+
+  @@unique([deviceId, localDate])
+  @@index([homeId, localDate])
+}
+
+model DeviceHealthEvent {
+  id         String             @id @default(uuid()) @db.Uuid
+  deviceId   String             @db.Uuid
+  homeId     String             @db.Uuid
+  status     DeviceHealthStatus
+  reason     String
+  occurredAt DateTime           @default(now())
+  device     Device             @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  home       Home               @relation(fields: [homeId], references: [id], onDelete: Restrict)
+
+  @@index([deviceId, occurredAt])
+  @@index([homeId, status])
 }
