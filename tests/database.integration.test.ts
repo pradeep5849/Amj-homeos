@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient, type Role } from "@prisma/client";
 import { completeAdoption } from "@/lib/onboarding";
+import { claimDueJobs } from "@/lib/scheduler";
 
 const enabled = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -185,6 +186,15 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     await expect(prisma.automationAction.create({ data: { automationId: stage5Automation.id, deviceId: device.id, command: "setPower", value: true, sortOrder: 1 } })).rejects.toThrow();
     await expect(prisma.automationTrigger.create({ data: { automationId: stage5Automation.id, triggerType: "DEVICE_STATE", deviceId: device.id, capability: "power", operator: "EQUALS", value: true } })).rejects.toThrow();
     await expect(prisma.scene.create({ data: { homeId: randomUUID(), name: "Invalid", normalizedName: "invalid", createdByUserId: homeOwner.id } })).rejects.toThrow();
+
+    const schedule = await prisma.automationSchedule.create({ data: { automationId: stage5Automation.id, scheduleType: "ONCE", runAt: new Date(Date.now()+60_000), timezoneSnapshot: "UTC", nextRunAt: new Date(Date.now()+60_000) } });
+    expect(schedule.automationId).toBe(stage5Automation.id);
+    const dueTimer = await prisma.timer.create({ data: { homeId: secondHome.id, createdByUserId: homeOwner.id, targetType: "DEVICE_COMMAND", deviceId: stage5Device.id, command: "setPower", value: true, runAt: new Date(Date.now()-1000) } });
+    await expect(prisma.timer.create({ data: { homeId: secondHome.id, createdByUserId: homeOwner.id, targetType: "DEVICE_COMMAND", deviceId: device.id, command: "setPower", value: true, runAt: new Date() } })).rejects.toThrow();
+    const [claimA,claimB]=await Promise.all([claimDueJobs(),claimDueJobs()]);expect([...claimA.timerIds,...claimB.timerIds].filter(id=>id===dueTimer.id)).toHaveLength(1);
+    await prisma.notification.create({ data: { userId: homeOwner.id, homeId: secondHome.id, type: "SCHEDULE", title: "Test", body: "Safe" } });
+    await expect(prisma.notification.create({ data: { userId: randomUUID(), type: "SYSTEM", title: "Invalid", body: "Invalid" } })).rejects.toThrow();
+    const scheduleIndexes=await prisma.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE tablename='AutomationSchedule'`;expect(scheduleIndexes.some(i=>i.indexname.includes('nextRunAt'))).toBe(true);
 
     const invalidTransition = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "FAILED", expiresAt: new Date(Date.now() + 60_000) } });
     await expect(prisma.deviceOnboardingSession.update({ where: { id: invalidTransition.id }, data: { status: "SUCCESS" } })).rejects.toThrow();

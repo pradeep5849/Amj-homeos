@@ -20,7 +20,7 @@ const timezone = z.string().trim().min(1).max(100).refine((value) => {
 const homeName = z.string().trim().min(2).max(100);
 const roomName = z.string().trim().min(1).max(100);
 export const createHomeSchema = z.object({ targetHomeOwnerId: z.string().uuid(), name: homeName, timezone }).strict();
-export const updateHomeSchema = z.object({ name: homeName.optional(), timezone: timezone.optional(), isArchived: z.boolean().optional() }).strict().refine((value) => Object.keys(value).length > 0, "At least one change is required");
+export const updateHomeSchema = z.object({ name: homeName.optional(), timezone: timezone.optional(), isArchived: z.boolean().optional(), latitude:z.number().min(-90).max(90).nullable().optional(),longitude:z.number().min(-180).max(180).nullable().optional() }).strict().refine((value) => Object.keys(value).length > 0, "At least one change is required");
 export const createRoomSchema = z.object({ name: roomName }).strict();
 export const updateRoomSchema = z.object({ name: roomName }).strict();
 export const addHomeMemberSchema = z.object({ userId: z.string().uuid() }).strict();
@@ -68,3 +68,20 @@ export const automationTriggerSchema=z.discriminatedUnion("triggerType",[
  z.object({triggerType:z.literal("MANUAL")}).strict(),
  z.object({triggerType:z.literal("DEVICE_STATE"),deviceId:z.string().uuid(),capability,operator,value:z.union([z.boolean(),z.number(),z.enum(["open","closed"])])}).strict().superRefine((v,c)=>{const numeric=["brightness","speed","battery","temperature","humidity"].includes(v.capability);if(!numeric&&!['EQUALS','NOT_EQUALS'].includes(v.operator))c.addIssue({code:'custom',message:'Operator is incompatible with capability',path:['operator']});if(v.capability==='power'&&typeof v.value!=='boolean')c.addIssue({code:'custom',message:'Power requires boolean',path:['value']});if(v.capability==='contact'&&!['open','closed'].includes(String(v.value)))c.addIssue({code:'custom',message:'Contact requires open or closed',path:['value']});if(numeric&&typeof v.value!=='number')c.addIssue({code:'custom',message:'Numeric capability requires number',path:['value']})}),
 ]);
+
+const scheduleBase={isEnabled:z.boolean().optional(),offsetMinutes:z.number().int().min(-720).max(720).optional()};
+export const createScheduleSchema=z.discriminatedUnion("scheduleType",[
+ z.object({...scheduleBase,scheduleType:z.literal("ONCE"),runAt:z.coerce.date()}).strict(),
+ z.object({...scheduleBase,scheduleType:z.literal("DAILY"),localTime:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)}).strict(),
+ z.object({...scheduleBase,scheduleType:z.literal("WEEKLY"),localTime:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),daysOfWeek:z.array(z.number().int().min(0).max(6)).min(1).max(7).refine(v=>new Set(v).size===v.length)}).strict(),
+ z.object({...scheduleBase,scheduleType:z.enum(["SUNRISE","SUNSET"])}).strict(),
+]);
+export const updateScheduleSchema=z.object({isEnabled:z.boolean().optional(),localTime:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),daysOfWeek:z.array(z.number().int().min(0).max(6)).optional(),offsetMinutes:z.number().int().min(-720).max(720).optional()}).strict().refine(v=>Object.keys(v).length>0);
+export const createTimerSchema=z.union([
+ z.object({targetType:z.literal("DEVICE_COMMAND"),deviceId:z.string().uuid(),runAt:z.coerce.date(),command:z.literal("setPower"),value:z.boolean()}).strict(),
+ z.object({targetType:z.literal("DEVICE_COMMAND"),deviceId:z.string().uuid(),runAt:z.coerce.date(),command:z.literal("setBrightness"),value:z.number().int().min(0).max(100)}).strict(),
+ z.object({targetType:z.literal("DEVICE_COMMAND"),deviceId:z.string().uuid(),runAt:z.coerce.date(),command:z.literal("setSpeed"),value:z.number().int().min(0).max(10)}).strict(),
+ z.object({targetType:z.literal("SCENE"),sceneId:z.string().uuid(),runAt:z.coerce.date()}).strict(),
+]);
+export const notificationPreferenceSchema=z.object({inAppEnabled:z.boolean().optional(),deviceEventsEnabled:z.boolean().optional(),automationEventsEnabled:z.boolean().optional(),scheduleEventsEnabled:z.boolean().optional(),systemEventsEnabled:z.boolean().optional()}).strict().refine(v=>Object.keys(v).length>0);
+export const coordinatesSchema=z.object({latitude:z.number().min(-90).max(90).nullable(),longitude:z.number().min(-180).max(180).nullable()}).strict();

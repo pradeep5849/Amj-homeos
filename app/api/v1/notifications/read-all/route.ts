@@ -1,0 +1,1 @@
+import{prisma}from'@/lib/db';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';export async function POST(){try{const a=await requireUser(),r=await prisma.notification.updateMany({where:{userId:a.id,isRead:false},data:{isRead:true,readAt:new Date()}});return Response.json({updated:r.count})}catch(e){return errorResponse(e)}}
