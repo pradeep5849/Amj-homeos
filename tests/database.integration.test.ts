@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient, type Role } from "@prisma/client";
 import { completeAdoption } from "@/lib/onboarding";
 import { claimDueJobs } from "@/lib/scheduler";
+import { aggregateEnergyDay, ingestHeartbeat, ingestTelemetry, retainTelemetry } from "@/lib/telemetry";
 
 const enabled = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -201,6 +202,21 @@ describe.skipIf(!enabled)("PostgreSQL constraints", () => {
     const client=await prisma.mobileClient.create({data:{userId:homeOwner.id,clientInstanceId:randomUUID(),platform:"ANDROID"}});await expect(prisma.mobileClient.create({data:{userId:homeOwner.id,clientInstanceId:client.clientInstanceId,platform:"ANDROID"}})).rejects.toThrow();
     const event=await prisma.presenceEvent.create({data:{homeId:secondHome.id,userId:homeOwner.id,mobileClientId:client.id,eventId:randomUUID(),previousStatus:"HOME",newStatus:"AWAY",source:"GEOFENCE",eventType:"EXIT",occurredAt:new Date(),distanceBand:"OUTSIDE"}});expect(event).not.toHaveProperty("latitude");
     const notification=await prisma.notification.create({data:{userId:homeOwner.id,type:"SYSTEM",title:"Push",body:"Safe"}});await prisma.notificationDelivery.create({data:{notificationId:notification.id,mobileClientId:client.id,channel:"PUSH",status:"NOT_CONFIGURED",provider:"FCM"}});
+
+    const telemetryDevice=await prisma.device.create({data:{homeId:secondHome.id,name:"Energy Sensor",deviceType:"SENSOR",protocol:"WIFI",capabilities:["energy","battery","temperature","humidity"],state:{}}});
+    const eventId=randomUUID();
+    expect((await ingestTelemetry({deviceId:telemetryDevice.id,metric:"POWER_WATTS",value:120,recordedAt:new Date(),source:"PROVIDER",provider:"DB_TEST",externalEventId:eventId})).duplicate).toBe(false);
+    expect((await ingestTelemetry({deviceId:telemetryDevice.id,metric:"POWER_WATTS",value:120,recordedAt:new Date(),source:"PROVIDER",provider:"DB_TEST",externalEventId:eventId})).duplicate).toBe(true);
+    await expect(ingestTelemetry({deviceId:telemetryDevice.id,metric:"BATTERY_PERCENT",value:101,recordedAt:new Date(),source:"PROVIDER",provider:"DB_TEST"})).rejects.toThrow("outside");
+    await expect(ingestTelemetry({deviceId:telemetryDevice.id,metric:"HUMIDITY_PERCENT",value:Number.NaN,recordedAt:new Date(),source:"PROVIDER",provider:"DB_TEST"})).rejects.toThrow("finite");
+    await expect(prisma.deviceTelemetry.create({data:{deviceId:telemetryDevice.id,homeId:firstHome.id,metric:"POWER_WATTS",value:1,unit:"W",recordedAt:new Date(),source:"PROVIDER",provider:"INVALID",quality:"MEASURED"}})).rejects.toThrow();
+    await ingestTelemetry({deviceId:telemetryDevice.id,metric:"ENERGY_WH",value:50,recordedAt:new Date(),source:"PROVIDER",provider:"DB_TEST",externalEventId:randomUUID()});
+    await ingestHeartbeat({deviceId:telemetryDevice.id,recordedAt:new Date(),provider:"DB_TEST"});
+    expect((await prisma.device.findUniqueOrThrow({where:{id:telemetryDevice.id}})).healthStatus).toBe("ONLINE");
+    const aggregate=await aggregateEnergyDay(telemetryDevice.id,new Date());expect(aggregate.measuredWh).toBe(50);
+    const competing=await Promise.all([aggregateEnergyDay(telemetryDevice.id,new Date()),aggregateEnergyDay(telemetryDevice.id,new Date())]);expect(competing).toHaveLength(2);expect(await prisma.deviceEnergyDaily.count({where:{deviceId:telemetryDevice.id}})).toBe(1);
+    await prisma.deviceTelemetry.create({data:{deviceId:telemetryDevice.id,homeId:secondHome.id,metric:"POWER_WATTS",value:1,unit:"W",recordedAt:new Date(Date.now()-91*86400000),source:"PROVIDER",provider:"OLD",quality:"MEASURED"}});expect(await retainTelemetry(new Date())).toBeGreaterThan(0);expect(await prisma.deviceEnergyDaily.count({where:{deviceId:telemetryDevice.id}})).toBe(1);
+    const telemetryIndexes=await prisma.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE tablename='DeviceTelemetry'`;expect(telemetryIndexes.some(i=>i.indexname.includes('deviceId_metric_recordedAt'))).toBe(true);
 
     const invalidTransition = await prisma.deviceOnboardingSession.create({ data: { homeId: secondHome.id, initiatedByUserId: homeOwner.id, onboardingType: "TUYA", protocol: "TUYA", status: "FAILED", expiresAt: new Date(Date.now() + 60_000) } });
     await expect(prisma.deviceOnboardingSession.update({ where: { id: invalidTransition.id }, data: { status: "SUCCESS" } })).rejects.toThrow();
