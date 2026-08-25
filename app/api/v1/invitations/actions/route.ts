@@ -1,0 +1,2 @@
+import{acceptInvitation,rejectInvitation}from'@/lib/home-sharing';import{errorResponse}from'@/lib/errors';import{requireUser}from'@/lib/session';import{invitationActionSchema}from'@/lib/validation';
+export async function POST(r:Request){try{const actor=await requireUser(),input=invitationActionSchema.parse(await r.json());if(input.action==='ACCEPT')return Response.json({membership:await acceptInvitation(actor,input.token)});await rejectInvitation(actor,input.token);return new Response(null,{status:204})}catch(e){return errorResponse(e)}}

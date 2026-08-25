@@ -23,6 +23,8 @@
     "telemetry:aggregate": "tsx scripts-telemetry-aggregate.ts",
     "telemetry:retention": "tsx scripts-telemetry-retention.ts",
     "test:http:stage8": "tsx tests/stage8-http.integration.ts"
+    ,"test:http:stage9": "tsx tests/stage9-http.integration.ts"
+    ,"invitations:expire": "tsx scripts-invitations-expire.ts"
   },
   "dependencies": {
     "@prisma/client": "6.12.0",

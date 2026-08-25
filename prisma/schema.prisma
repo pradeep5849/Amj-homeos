@@ -218,6 +218,24 @@ enum DeviceHealthStatus {
   UNKNOWN
 }
 
+enum HomeInvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum HomeSharingAuditType {
+  INVITATION_CREATED
+  INVITATION_ACCEPTED
+  INVITATION_REJECTED
+  INVITATION_CANCELLED
+  INVITATION_EXPIRED
+  MEMBER_REMOVED
+  MEMBER_LEFT
+}
+
 model User {
   id                         String                    @id @default(uuid()) @db.Uuid
   email                      String
@@ -244,6 +262,10 @@ model User {
   mobileClients              MobileClient[]
   geofencesCreated           HomeGeofence[]
   presenceAutomationTriggers AutomationTrigger[]
+  invitationsSent            HomeInvitation[]          @relation("InvitationInviter")
+  invitationsAccepted        HomeInvitation[]          @relation("InvitationAccepter")
+  sharingAuditAsActor        HomeSharingAudit[]        @relation("SharingAuditActor")
+  sharingAuditAsAffectedUser HomeSharingAudit[]        @relation("SharingAuditAffectedUser")
 
   @@index([role, isActive])
 }
@@ -274,8 +296,51 @@ model Home {
   telemetry            DeviceTelemetry[]
   energyDaily          DeviceEnergyDaily[]
   healthEvents         DeviceHealthEvent[]
+  invitations          HomeInvitation[]
+  sharingAudit         HomeSharingAudit[]
 
   @@index([isArchived])
+}
+
+model HomeInvitation {
+  id               String               @id @default(uuid()) @db.Uuid
+  homeId           String               @db.Uuid
+  normalizedEmail  String
+  role             HomeMembershipRole   @default(MEMBER)
+  status           HomeInvitationStatus @default(PENDING)
+  tokenHash        String               @unique
+  invitedByUserId  String               @db.Uuid
+  acceptedByUserId String?              @db.Uuid
+  createdAt        DateTime             @default(now())
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  rejectedAt       DateTime?
+  cancelledAt      DateTime?
+  home             Home                 @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  invitedBy        User                 @relation("InvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  acceptedBy       User?                @relation("InvitationAccepter", fields: [acceptedByUserId], references: [id], onDelete: Restrict)
+  auditEvents      HomeSharingAudit[]
+
+  @@index([homeId, status, createdAt])
+  @@index([normalizedEmail, status, expiresAt])
+  @@index([status, expiresAt])
+}
+
+model HomeSharingAudit {
+  id             String               @id @default(uuid()) @db.Uuid
+  homeId         String               @db.Uuid
+  actorUserId    String?              @db.Uuid
+  affectedUserId String?              @db.Uuid
+  invitationId   String?              @db.Uuid
+  eventType      HomeSharingAuditType
+  createdAt      DateTime             @default(now())
+  home           Home                 @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  actor          User?                @relation("SharingAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  affectedUser   User?                @relation("SharingAuditAffectedUser", fields: [affectedUserId], references: [id], onDelete: Restrict)
+  invitation     HomeInvitation?      @relation(fields: [invitationId], references: [id], onDelete: Restrict)
+
+  @@index([homeId, createdAt])
+  @@index([invitationId])
 }
 
 model HomeMembership {
