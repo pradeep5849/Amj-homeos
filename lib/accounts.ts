@@ -43,6 +43,7 @@ export async function updateAdmin(id: string, input: { name?: string; isActive?:
     const existing = await tx.user.findFirst({ where: { id, role: "ADMIN" }, include: { adminProfile: true } });
     if (!existing?.adminProfile) throw new HttpError(404, "Admin not found");
     if (input.isDefaultAdmin === false && existing.adminProfile.isDefaultAdmin) throw new HttpError(409, "Choose another default Admin instead");
+    if (existing.adminProfile.isDefaultAdmin && input.isActive === false) throw new HttpError(409, "Choose another default Admin before deactivating this Admin");
     if (input.isDefaultAdmin && input.isActive === false) throw new HttpError(400, "Default Admin must be active");
     if (input.isDefaultAdmin) {
       await tx.adminProfile.updateMany({ where: { isDefaultAdmin: true, NOT: { userId: id } }, data: { isDefaultAdmin: false } });
