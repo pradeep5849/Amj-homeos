@@ -167,3 +167,26 @@ Authenticated users can change their password, inspect a privacy-minimal active-
 Login abuse protection is PostgreSQL-backed and normalized by email: five failures within 15 minutes lock that identifier for 15 minutes, concurrent increments use one atomic upsert, success clears the state, and every denial remains the generic `Invalid email or password`. Controlled security events cover login success/failure, logout, password changes, and session revocation. Home management activity reuses the Stage 9 audit rather than duplicating it; OWNER and existing trusted support access follow `homeAccess`, while MEMBER and cross-customer access are denied.
 
 Security and Home activity audit retention is 365 days. `audit:retention` deletes at most 1,000 old rows per category per run and does not delete sessions, memberships, notifications, telemetry, presence, or execution history. No IP, User-Agent, device fingerprint, OAuth, MFA, passkey, external email/SMS/WhatsApp provider, physical transport, or provider credential is added in Stage 10.
+
+## Stage 11 — AMJ HomeOS product experience and branding
+
+Stage 11 presents the existing platform as the responsive **AMJ HomeOS** customer web application by AMJ Consterior Solutions. Its authenticated application shell uses a persistent desktop sidebar and touch-friendly mobile navigation for Home, Rooms, Devices, Scenes, Automations, Energy, Presence, Notifications, Family, and Security. A server-authorized Home list powers the shell's multi-Home selector; selecting a Home changes only UI context and never grants access.
+
+The small design system in `app/globals.css` defines AMJ navy, warm gold, accessible semantic status colors, surfaces, typography, focus treatment, cards, inputs, buttons, badges, empty states, and responsive breakpoints. `app/components/brand.tsx` intentionally contains an isolated temporary text lockup because no approved production geometric AMJ asset was supplied. Replace that component with the approved undistorted SVG/PNG mark when available; no competing or guessed logo is used. Web-app metadata supplies the AMJ HomeOS name and theme without a service worker, authenticated-response caching, or an unsupported icon.
+
+The experience is mobile-first and verified at 360×800 and 390×844, plus 1440×900 desktop. Device cards expose only canonical declared controls and label changes as **logical HomeOS state**. Logical updates never imply that a physical command succeeded. Unknown health and unavailable energy remain explicit rather than becoming fake online status or zero usage. Exact coordinates, detailed location history, invitation hashes, session tokens/digests, and push tokens are excluded from customer surfaces.
+
+All physical and external delivery providers remain honest and fail closed: Wi-Fi/BLE provisioning, Zigbee, Tuya, FCM, APNs, Web Push, Android/iOS background location, email, SMS, and WhatsApp are `NOT_CONFIGURED`. AMJ HomeOS remains protocol-independent; Stage 11 adds no hardware transport, Home Assistant dependency, MQTT transport, provider credential, or billing-grade energy claim.
+
+Stage 11 verification adds:
+
+```bash
+DATABASE_TEST_URL=postgresql://... npm run test:http:stage11
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm audit --omit=dev
+```
+
+The Stage 11 HTTP suite requires a fresh disposable PostgreSQL database and Playwright Chromium. It validates the authenticated shell, authorization boundaries, multi-Home isolation, privacy-safe projections, capability-aware controls, honest unavailable states, and responsive no-overflow rendering with screenshots in `artifacts/`.
