@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { PasswordInput } from "@/app/components/password-input";
 import { SignOutButton } from "@/app/dashboard/sign-out-button";
 
 type Session={id:string;createdAt:string;lastUsedAt:string;expiresAt:string;current:boolean};
@@ -16,7 +17,7 @@ export function AccountPanel({user}:{user:{name:string;email:string;role:string}
     <header className="page-header"><div><p className="eyebrow">AMJ HomeOS · Account</p><h1>Profile & Security</h1><p className="muted">Manage your AMJ HomeOS account, password and active sessions.</p></div><SignOutButton/></header>
     {message&&<div className="admin-notice" role="status">{message}</div>}
     <section id="profile" className="content-section"><p className="eyebrow">Profile</p><h2>Account details</h2><div className="admin-status-grid"><div><strong>Name</strong><p>{user.name}</p></div><div><strong>Email</strong><p>{user.email}</p></div><div><strong>Role</strong><p>{user.role.replaceAll('_',' ')}</p></div></div></section>
-    <section id="password" className="content-section"><p className="eyebrow">Password</p><h2>Change password</h2><form onSubmit={password}><label>Current password<input name="currentPassword" type="password" required autoComplete="current-password"/></label><label>New password<input name="newPassword" type="password" minLength={12} required autoComplete="new-password"/></label><label>Confirm new password<input name="confirmPassword" type="password" minLength={12} required autoComplete="new-password"/></label><button>Change password</button></form></section>
+    <section id="password" className="content-section"><p className="eyebrow">Password</p><h2>Change password</h2><form onSubmit={password}><label>Current password<PasswordInput name="currentPassword" required autoComplete="current-password"/></label><label>New password<PasswordInput name="newPassword" minLength={12} required autoComplete="new-password"/></label><label>Confirm new password<PasswordInput name="confirmPassword" minLength={12} required autoComplete="new-password"/></label><button>Change password</button></form></section>
     <section id="security" className="content-section"><p className="eyebrow">Security</p><h2>Sessions</h2><button className="secondary" onClick={()=>void revoke()}>Revoke all other sessions</button><div className="admin-list">{sessions.map(s=><article className="admin-row" key={s.id}><div><strong>{s.current?'Current session':'Active session'}</strong><span>Last used {new Date(s.lastUsedAt).toLocaleString()}</span></div>{!s.current&&<button className="secondary small" onClick={()=>void revoke(s.id)}>Revoke</button>}</article>)}</div><h3>Security activity</h3><div className="admin-list">{events.slice(0,20).map(e=><article className="admin-row" key={e.id}><div><strong>{e.eventType.replaceAll('_',' ')}</strong><span>{new Date(e.occurredAt).toLocaleString()}</span></div></article>)}</div></section>
   </div>;
 }
