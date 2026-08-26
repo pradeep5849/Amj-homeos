@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "deploy:build": "prisma generate && prisma migrate deploy && node prisma/bootstrap-hostinger.cjs && next build",
+    "deploy:build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
