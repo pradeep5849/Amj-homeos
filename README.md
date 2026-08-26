@@ -1,5 +1,7 @@
 # AMJ HomeOS
 
+For production-like Node.js/PostgreSQL deployment requirements, Hostinger Business compatibility, environment variables, workers, and the mobile test procedure, see [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
 AMJ HomeOS Stage 1 is the secure SaaS account foundation for a future home-management platform. Stage 1 deliberately contains no homes, rooms, devices, protocols, automations, billing, or installer hierarchy.
 
 ## SaaS hierarchy
