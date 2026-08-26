@@ -24,16 +24,18 @@ const secondary: { id: Destination; label: string; icon: string }[] = [
   { id: "presence", label: "Presence", icon: "●" },
 ];
 const all = [...primary, ...secondary];
+const descriptions:Partial<Record<Destination,string>>={presence:"See who is currently home and manage presence settings."};
 
 export function DashboardShell({ user }: { user: { name: string; role: string; assignedAdmin?: string } }) {
   const [active, setActive] = useState<Destination>("home");
   const title = all.find(item => item.id === active)?.label ?? "Home";
+  const isSecondary=secondary.some(item=>item.id===active);
   return <div className="app-shell">
     <aside className="sidebar"><Brand /><nav aria-label="Product navigation">{primary.concat(secondary).map(item => <button key={item.id} className={active === item.id ? "nav-item active" : "nav-item"} aria-current={active === item.id ? "page" : undefined} onClick={() => setActive(item.id)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>)}</nav><div className="sidebar-account"><span className="avatar" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span><span><strong>{user.name}</strong><small>{user.role.replaceAll("_", " ")}</small><Link href="/account">Profile</Link></span><SignOutButton /></div></aside>
     <header className="mobile-header"><Brand /><AccountMenu name={user.name} role={user.role.replaceAll("_", " ")} /></header>
     <main className="workspace" id="main-content">
-      <header className="page-header"><div><p className="eyebrow">AMJ HomeOS</p><h1>{title}</h1></div><div className="user-summary"><strong>{user.name}</strong><span>{user.role.replaceAll("_", " ")}</span>{user.assignedAdmin && <span>AMJ administrator: {user.assignedAdmin}</span>}</div></header>
-      {active === "more" ? <section className="content-section"><div className="section-heading"><div><p className="eyebrow">Home settings</p><h2>More</h2></div></div><div className="room-grid">{secondary.map(item => <button key={item.id} className="room-card" onClick={() => setActive(item.id)}><span aria-hidden="true">{item.icon}</span><strong>{item.label}</strong></button>)}<Link className="room-card" href="/account"><strong>Profile & password</strong></Link><article className="room-card"><strong>Help & About</strong><span>AMJ HomeOS</span></article></div></section> : active === "family" ? <><MyInvitations /><HomeManagement role={user.role} active={active} /></> : <HomeManagement role={user.role} active={active} />}
+      {isSecondary&&<header className="page-header compact-page-header"><div><h1>{title}</h1>{descriptions[active]&&<p className="muted">{descriptions[active]}</p>}</div><div className="user-summary"><strong>{user.name}</strong><span>{user.role.replaceAll("_", " ")}</span>{user.assignedAdmin && <span>AMJ administrator: {user.assignedAdmin}</span>}</div></header>}
+      {active === "more" ? <section className="content-section"><div className="section-heading"><div><h2>More</h2></div></div><div className="room-grid">{secondary.map(item => <button key={item.id} className="room-card" onClick={() => setActive(item.id)}><span aria-hidden="true">{item.icon}</span><strong>{item.label}</strong></button>)}<Link className="room-card" href="/account"><strong>Profile & password</strong></Link><article className="room-card"><strong>Help & About</strong><span>AMJ HomeOS</span></article></div></section> : active === "family" ? <><MyInvitations /><HomeManagement role={user.role} active={active} /></> : <HomeManagement role={user.role} active={active} />}
     </main>
     <nav className="mobile-nav" aria-label="Mobile product navigation">{primary.map(item => <button key={item.id} className={(active === item.id || (item.id === "more" && secondary.some(s => s.id === active))) ? "active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={() => setActive(item.id)}><span aria-hidden="true">{item.icon}</span><small>{item.label}</small></button>)}</nav>
   </div>;
