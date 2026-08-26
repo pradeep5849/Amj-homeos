@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/app/components/password-input";
 
 export function AuthForm({ mode }: { mode: "sign-in" | "register" }) {
   const router = useRouter();
@@ -17,7 +18,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "register" }) {
   return <form onSubmit={submit}>
     {mode === "register" && <label>Name<input name="name" autoComplete="name" required minLength={2} /></label>}
     <label>Email<input name="email" type="email" autoComplete="email" required /></label>
-    <label>Password<input name="password" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} required minLength={12} /></label>
+    <label>Password<PasswordInput name="password" autoComplete={mode === "register" ? "new-password" : "current-password"} required minLength={12} /></label>
     {error && <p className="error" role="alert">{error}</p>}
     <button type="submit">{mode === "register" ? "Register" : "Sign in"}</button>
   </form>;
