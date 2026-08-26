@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "@/app/dashboard/sign-out-button";
 
-export function AccountMenu({ name, role }: { name: string; role: string }) {
+export function AccountMenu({ name, role, showSecurity = false }: { name: string; role: string; showSecurity?: boolean }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -25,7 +25,7 @@ export function AccountMenu({ name, role }: { name: string; role: string }) {
           <div className="account-menu-identity"><strong>{name}</strong><small>{role}</small></div>
           <Link href="/account#profile" onClick={() => setOpen(false)}>Profile</Link>
           <Link href="/account#password" onClick={() => setOpen(false)}>Change password</Link>
-          <Link href="/account#security" onClick={() => setOpen(false)}>Security & sessions</Link>
+          {showSecurity && <Link href="/account#security" onClick={() => setOpen(false)}>Security & sessions</Link>}
           <SignOutButton />
         </div>
       )}
