@@ -14,9 +14,10 @@ export function PasswordInput(props: Props) {
         type="button"
         aria-label={visible ? "Hide password" : "Show password"}
         aria-pressed={visible}
+        title={visible ? "Hide password" : "Show password"}
         onClick={() => setVisible((value) => !value)}
       >
-        <span aria-hidden="true">{visible ? "◉" : "◌"}</span>
+        <span aria-hidden="true">{visible ? "🙈" : "👁"}</span>
       </button>
     </span>
   );
