@@ -13,7 +13,7 @@ type ChannelRow={id:string;switchboardId:string;catalogChannelId:string;deviceId
 function strings(value:unknown){return Array.isArray(value)?value.filter((x):x is string=>typeof x==="string"):[]}
 function object(value:unknown){return value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{} }
 function deviceType(controlType:string){return controlType==="FAN"?"FAN":controlType==="SWITCH"||controlType==="SOCKET"||controlType==="HEAVY_SWITCH"||controlType==="DOORBELL"?"SWITCH":"OTHER" as const}
-function initialState(capabilities:string[]){const state:Record<string,unknown>={};if(capabilities.includes("power"))state.power=false;if(capabilities.includes("speed"))state.speed=0;if(capabilities.includes("brightness"))state.brightness=0;return state}
+function initialState(capabilities:string[]):Prisma.InputJsonObject{const state:Prisma.InputJsonObject={};if(capabilities.includes("power"))state.power=false;if(capabilities.includes("speed"))state.speed=0;if(capabilities.includes("brightness"))state.brightness=0;return state}
 
 export async function listInstalledSwitchboards(actor:Actor,homeId:string){
  await homeAccess(actor,homeId);
