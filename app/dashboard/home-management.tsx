@@ -6,7 +6,6 @@ import { Stage6Panel } from "./stage6-panel";
 import { PresencePanel } from "./presence-panel";
 import { EnergyPanel } from "./energy-panel";
 import { SharingPanel } from "./sharing-panel";
-import { HomeActivity } from "./security-panel";
 type Home = { id: string; name: string; timezone: string; memberships: { role: "OWNER" | "MEMBER" }[] };
 type Room = { id: string; name: string };
 type Owner = { id: string; name: string };
@@ -37,7 +36,7 @@ export function HomeManagement({ role, active }: { role: string; active: "home" 
     {selected && active === "notifications" && <section className="content-section"><h2>Notifications & schedules</h2><Stage6Panel homeId={selected.id} timezone={selected.timezone} devices={devices} canManage={canManage} /></section>}
     {selected && active === "presence" && <section className="content-section"><h2>Presence</h2><PresencePanel homeId={selected.id} canManage={canManage} /></section>}
     {selected && active === "energy" && <section className="content-section"><h2>Energy</h2><EnergyPanel homeId={selected.id} /></section>}
-    {selected && active === "family" && <section className="content-section"><h2>Home sharing</h2><SharingPanel homeId={selected.id} canManage={canManage} /><HomeActivity homeId={selected.id} canManage={canManage} /></section>}
+    {selected && active === "family" && <section className="content-section"><h2>Family & Home Users</h2><p className="muted">Invite family members or other trusted users to this Home and manage their access.</p><SharingPanel homeId={selected.id} canManage={canManage} /></section>}
     {role === "ADMIN" && active === "home" && <section className="content-section"><details><summary>Provision a Home</summary><form onSubmit={provision}><label>Home Owner<select name="owner" required><option value="">Select</option>{owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select></label><label>Home name<input name="name" required minLength={2} /></label><label>Timezone<input name="timezone" defaultValue="Asia/Kolkata" required /></label><button>Create Home</button></form></details></section>}
     {message && <div className="toast" role="status">{message}</div>}
   </>;
