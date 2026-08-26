@@ -1,0 +1,26 @@
+/* AMJ HomeOS compact mobile control surface */
+@media(max-width:760px){
+  /* Keep rooms glanceable on a phone instead of stacking one huge card per row. */
+  .content-section .room-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+  .room-card{padding:.85rem;margin:0;min-height:92px}
+  .room-card>h3{font-size:1rem;margin:.1rem 0 .35rem}
+  .room-card>span{font-size:.78rem;color:var(--muted)}
+
+  /* Device controls are deliberately compact: name/room left, power control right. */
+  .device-grid{gap:.7rem}
+  .device-card{position:relative;padding:.8rem;margin:0;min-height:112px}
+  .device-title{padding-right:52px;gap:.6rem}
+  .device-icon{width:38px;height:38px;border-radius:10px;flex:0 0 38px}
+  .device-title h3{font-size:1rem;line-height:1.15}
+  .device-title p{font-size:.78rem;margin:.15rem 0}
+  .device-card>button{position:absolute;right:.8rem;top:.8rem;width:42px;height:42px;min-height:42px;padding:0;border-radius:12px;font-size:0;display:grid;place-items:center}
+  .device-card>button::before{content:"⏻";font-size:1.35rem;line-height:1}
+  .device-card>label{margin-top:.65rem;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:.55rem;font-size:.72rem}
+  .device-card input[type=range]{min-height:28px}
+
+  /* Quick controls can show two devices side-by-side on normal phone widths. */
+  .content-section>.device-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:390px){
+  .content-section>.device-grid{grid-template-columns:1fr}
+}
