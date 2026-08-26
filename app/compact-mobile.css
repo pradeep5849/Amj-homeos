@@ -1,10 +1,27 @@
 /* AMJ HomeOS compact mobile control surface */
 @media(max-width:760px){
+  /* Consistent app-scale typography: keep headings clear without consuming the screen. */
+  .workspace{font-size:.9rem}
+  .workspace h1{font-size:1.45rem;line-height:1.15}
+  .workspace h2{font-size:1.3rem;line-height:1.2}
+  .workspace h3{font-size:1rem;line-height:1.2}
+  .workspace p,.workspace label,.workspace input,.workspace select,.workspace button{font-size:.88rem}
+  .content-section{padding:1rem}
+  .section-heading{margin-bottom:.8rem}
+  .compact-page-header{padding:1rem 1rem .45rem}
+  .compact-page-header h1{margin:0 0 .25rem}
+  .compact-page-header .muted{margin:0;max-width:34rem;font-size:.82rem}
+  /* More-menu detail screens already have the compact page title above them. */
+  .compact-page-header + .content-section>h2{display:none}
+
   /* Keep rooms glanceable on a phone instead of stacking one huge card per row. */
   .content-section .room-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
   .room-card{padding:.85rem;margin:0;min-height:92px}
   .room-card>h3{font-size:1rem;margin:.1rem 0 .35rem}
   .room-card>span{font-size:.78rem;color:var(--muted)}
+  /* Room cards stay simple: room name + actions. Device categories belong on Devices. */
+  .room-card-managed>span{display:none}
+  .room-card-managed{min-height:78px}
 
   /* Device controls are deliberately compact: name/room left, power control right. */
   .device-grid{gap:.7rem}
