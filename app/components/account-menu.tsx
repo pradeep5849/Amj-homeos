@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "@/app/dashboard/sign-out-button";
 
@@ -13,6 +14,7 @@ export function AccountMenu({ name, role }: { name: string; role: string }) {
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, []);
+
   return (
     <div className="account-menu" ref={root}>
       <button className="avatar account-menu-trigger" type="button" aria-label="Open account menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
@@ -21,6 +23,9 @@ export function AccountMenu({ name, role }: { name: string; role: string }) {
       {open && (
         <div className="account-menu-popover" role="menu">
           <div className="account-menu-identity"><strong>{name}</strong><small>{role}</small></div>
+          <Link href="/account#profile" onClick={() => setOpen(false)}>Profile</Link>
+          <Link href="/account#password" onClick={() => setOpen(false)}>Change password</Link>
+          <Link href="/account#security" onClick={() => setOpen(false)}>Security & sessions</Link>
           <SignOutButton />
         </div>
       )}
