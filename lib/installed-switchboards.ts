@@ -5,7 +5,7 @@ import { HttpError } from "./errors";
 import { homeAccess } from "./homes";
 
 type Actor={id:string;role:"SUPER_ADMIN"|"ADMIN"|"HOME_OWNER"|"HOME_USER"};
-type Protocol="WIFI"|"ZIGBEE";
+type Protocol="WIFI"|"ZIGBEE"|"TUYA";
 type CatalogChannel={id:string;position:number;controlType:string;defaultLabel:string;capabilities:unknown};
 type BoardRow={id:string;homeId:string;roomId:string;catalogModelId:string;protocol:Protocol;name:string;externalBoardId:string|null;isOnline:boolean;lastSeenAt:Date|null;brand:string;moduleSize:string;configurationCode:string;configurationLabel:string};
 type ChannelRow={id:string;switchboardId:string;catalogChannelId:string;deviceId:string|null;label:string;position:number;controlType:string;capabilities:unknown;deviceName:string|null;state:unknown;deviceCapabilities:unknown;healthStatus:string|null;isOnline:boolean|null};
@@ -28,7 +28,7 @@ export async function createInstalledSwitchboard(actor:Actor,input:{homeId:strin
  await homeAccess(actor,input.homeId,true);
  const room=await prisma.room.findFirst({where:{id:input.roomId,homeId:input.homeId},select:{id:true}});if(!room)throw new HttpError(400,"Room must belong to the selected Home");
  const models=await prisma.$queryRaw<{id:string;brand:string;configurationCode:string}[]>(Prisma.sql`SELECT "id","brand","configurationCode" FROM "SwitchboardCatalogModel" WHERE "id"=${input.catalogModelId}::uuid AND "isActive"=true LIMIT 1`);if(!models.length)throw new HttpError(404,"Switchboard catalog model not found");
- const supported=await prisma.$queryRaw<{id:string}[]>(Prisma.sql`SELECT "id" FROM "SwitchboardCatalogProtocol" WHERE "catalogModelId"=${input.catalogModelId}::uuid AND "protocol"=${input.protocol}::"DeviceProtocol" AND "isActive"=true LIMIT 1`);if(!supported.length)throw new HttpError(400,"Selected protocol is not supported by this switchboard model");
+ const supported=await prisma.$queryRaw<{id:string}[]>(Prisma.sql`SELECT "id" FROM "SwitchboardCatalogProtocol" WHERE "catalogModelId"=${input.catalogModelId}::uuid AND "protocol"=${input.protocol}::"DeviceProtocol" AND "isActive"=true LIMIT 1`);if(!supported.length)throw new HttpError(400,"Selected technology is not supported by this switchboard model");
  const catalogChannels=await prisma.$queryRaw<CatalogChannel[]>(Prisma.sql`SELECT "id","position","controlType","defaultLabel","capabilities" FROM "SwitchboardCatalogChannel" WHERE "catalogModelId"=${input.catalogModelId}::uuid ORDER BY "position"`);if(!catalogChannels.length)throw new HttpError(400,"Switchboard model has no controls");
  const boardId=randomUUID(),model=models[0];
  await prisma.$transaction(async tx=>{
