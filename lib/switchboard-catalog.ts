@@ -1,0 +1,40 @@
+import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
+import { prisma } from "./db";
+import { HttpError } from "./errors";
+
+type Actor={id:string;role:string};
+export type CatalogChannel={id:string;position:number;controlType:string;defaultLabel:string;capabilities:string[]};
+export type CatalogModel={id:string;brand:string;moduleSize:string;configurationCode:string;displayName:string;configurationLabel:string;isActive:boolean;needsCodeVerification:boolean;protocols:{protocol:"WIFI"|"ZIGBEE";isActive:boolean}[];channels:CatalogChannel[]};
+
+type ModelRow={id:string;brand:string;moduleSize:string;configurationCode:string;displayName:string;configurationLabel:string;isActive:boolean;needsCodeVerification:boolean};
+type ProtocolRow={catalogModelId:string;protocol:"WIFI"|"ZIGBEE";isActive:boolean};
+type ChannelRow={id:string;catalogModelId:string;position:number;controlType:string;defaultLabel:string;capabilities:unknown};
+
+function requireSuperAdmin(actor:Actor){if(actor.role!=="SUPER_ADMIN")throw new HttpError(403,"Super Admin access required");}
+function capabilities(value:unknown):string[]{return Array.isArray(value)?value.filter((v):v is string=>typeof v==="string"):[]}
+
+export async function listSwitchboardCatalog(actor:Actor,{includeInactive=false}:{includeInactive?:boolean}={}){
+ const rows=await prisma.$queryRaw<ModelRow[]>(Prisma.sql`SELECT "id","brand","moduleSize","configurationCode","displayName","configurationLabel","isActive","needsCodeVerification" FROM "SwitchboardCatalogModel" ${includeInactive&&actor.role==="SUPER_ADMIN"?Prisma.empty:Prisma.sql`WHERE "isActive"=true`} ORDER BY "brand","moduleSize","configurationCode"`);
+ if(!rows.length)return [];
+ const ids=rows.map(r=>r.id);
+ const protocols=await prisma.$queryRaw<ProtocolRow[]>(Prisma.sql`SELECT "catalogModelId","protocol","isActive" FROM "SwitchboardCatalogProtocol" WHERE "catalogModelId" IN (${Prisma.join(ids)}) ORDER BY "protocol"`);
+ const channels=await prisma.$queryRaw<ChannelRow[]>(Prisma.sql`SELECT "id","catalogModelId","position","controlType","defaultLabel","capabilities" FROM "SwitchboardCatalogChannel" WHERE "catalogModelId" IN (${Prisma.join(ids)}) ORDER BY "catalogModelId","position"`);
+ return rows.map(row=>({...row,protocols:protocols.filter(p=>p.catalogModelId===row.id&&p.isActive).map(p=>({protocol:p.protocol,isActive:p.isActive})),channels:channels.filter(c=>c.catalogModelId===row.id).map(c=>({...c,capabilities:capabilities(c.capabilities)}))})) as CatalogModel[];
+}
+
+export async function createSwitchboardCatalogModel(actor:Actor,input:{brand:string;moduleSize:string;configurationCode:string;displayName:string;configurationLabel:string;protocols:("WIFI"|"ZIGBEE")[];needsCodeVerification?:boolean;channels:{position:number;controlType:"SWITCH"|"FAN"|"SOCKET"|"HEAVY_SWITCH"|"DOORBELL"|"SCENE";defaultLabel:string;capabilities:string[]}[]}){
+ requireSuperAdmin(actor);const id=randomUUID();
+ const duplicate=await prisma.$queryRaw<{id:string}[]>(Prisma.sql`SELECT "id" FROM "SwitchboardCatalogModel" WHERE lower("brand")=lower(${input.brand}) AND "configurationCode"=${input.configurationCode} LIMIT 1`);if(duplicate.length)throw new HttpError(409,"A catalog model with this brand and code already exists");
+ await prisma.$transaction(async tx=>{
+  await tx.$executeRaw(Prisma.sql`INSERT INTO "SwitchboardCatalogModel" ("id","brand","moduleSize","configurationCode","displayName","configurationLabel","isActive","needsCodeVerification","createdAt","updatedAt") VALUES (${id}::uuid,${input.brand},${input.moduleSize},${input.configurationCode},${input.displayName},${input.configurationLabel},true,${input.needsCodeVerification??false},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`);
+  for(const protocol of input.protocols){const pid=randomUUID();await tx.$executeRaw(Prisma.sql`INSERT INTO "SwitchboardCatalogProtocol" ("id","catalogModelId","protocol","isActive","createdAt","updatedAt") VALUES (${pid}::uuid,${id}::uuid,${protocol}::"DeviceProtocol",true,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`)}
+  for(const channel of input.channels){const cid=randomUUID();await tx.$executeRaw(Prisma.sql`INSERT INTO "SwitchboardCatalogChannel" ("id","catalogModelId","position","controlType","defaultLabel","capabilities","createdAt","updatedAt") VALUES (${cid}::uuid,${id}::uuid,${channel.position},${channel.controlType}::"SwitchboardControlType",${channel.defaultLabel},${JSON.stringify(channel.capabilities)}::jsonb,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`)}
+ });
+ return id;
+}
+
+export async function updateSwitchboardCatalogModel(actor:Actor,id:string,input:{displayName?:string;configurationLabel?:string;isActive?:boolean;needsCodeVerification?:boolean}){
+ requireSuperAdmin(actor);const found=await prisma.$queryRaw<{id:string}[]>(Prisma.sql`SELECT "id" FROM "SwitchboardCatalogModel" WHERE "id"=${id}::uuid LIMIT 1`);if(!found.length)throw new HttpError(404,"Switchboard catalog model not found");
+ await prisma.$executeRaw(Prisma.sql`UPDATE "SwitchboardCatalogModel" SET "displayName"=COALESCE(${input.displayName??null},"displayName"),"configurationLabel"=COALESCE(${input.configurationLabel??null},"configurationLabel"),"isActive"=COALESCE(${input.isActive??null},"isActive"),"needsCodeVerification"=COALESCE(${input.needsCodeVerification??null},"needsCodeVerification"),"updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${id}::uuid`);
+}
