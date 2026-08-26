@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./enhancements.css";
 import type { Metadata, Viewport } from "next";
 import { UiEnhancements } from "@/app/components/ui-enhancements";
 
