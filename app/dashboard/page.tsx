@@ -5,5 +5,6 @@ import { DashboardShell } from "./dashboard-shell";
 export default async function Dashboard() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
+  if (user.role === "SUPER_ADMIN") redirect("/admin");
   return <DashboardShell user={{ name: user.name, role: user.role, assignedAdmin: user.homeOwnerProfile?.assignedAdmin.user.name }} />;
 }
