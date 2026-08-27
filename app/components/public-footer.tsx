@@ -1,0 +1,14 @@
+import Link from "next/link";
+
+export function PublicFooter(){return <footer className="marketing-footer">
+  <div><strong>SOLUTIONS</strong><Link href="/solutions">All Solutions</Link><Link href="/solutions/home-automation">Complete Home Automation</Link><Link href="/solutions/smart-lighting">Smart Lighting</Link><Link href="/solutions/smart-switchboards">Smart Switchboards</Link><Link href="/solutions/climate">Fan & Climate Control</Link><Link href="/solutions/curtains-motors">Curtains & Motorisation</Link><Link href="/solutions/security-sensors">Security & Sensors</Link><Link href="/solutions/scenes-automations">Scenes & Automations</Link><Link href="/solutions/energy-management">Energy Management</Link></div>
+  <div><strong>PRODUCTS</strong><Link href="/products">All Products</Link><Link href="/products/smart-switchboards">Smart Switchboards</Link><Link href="/products/modules-relays">Smart Modules & Relays</Link><Link href="/products/gateways">Gateways</Link><Link href="/products/sensors">Sensors</Link><Link href="/products/fan-climate">Fan & Climate Controllers</Link><Link href="/products/curtain-motor">Curtain & Motor Controllers</Link><Link href="/products/lighting-dimmers">Lighting & Dimmers</Link><Link href="/products/accessories">Accessories</Link></div>
+  <div><strong>RUVEXA</strong><Link href="/ruvexa">Ruvexa App</Link><Link href="/ruvexa/how-it-works">How It Works</Link><Link href="/ruvexa/features">Features</Link><Link href="/ruvexa/technology">Technology Used</Link><Link href="/ruvexa/supported-devices">Supported Devices</Link><Link href="/ruvexa/download">Download Ruvexa</Link></div>
+  <div><strong>PARTNERS</strong><Link href="/partners/franchise">Franchise</Link><Link href="/partners/oem">OEM / White Label</Link><Link href="/partners/support">Partner Support</Link></div>
+  <div><strong>COMPANY</strong><Link href="/about">About Us</Link><Link href="/ruvexa/technology">Our Technology</Link><Link href="/projects">Projects</Link></div>
+  <div className="footer-contact"><strong>CONTACT US</strong><span>1st & 2nd Floor, Annajigowda Complex,<br/>B. M. Road, Alur, Hassan – 573213</span><a href="tel:+919886626385">+91 98866 26385</a><a href="tel:+919632078818">+91 96320 78818</a><a href="tel:+919611278818">+91 96112 78818</a><a href="mailto:amjautomation@gmail.com">amjautomation@gmail.com</a></div>
+  <div className="footer-download"><strong>DOWNLOAD RUVEXA</strong><div><span className="store-badge">▶ Google Play</span><span className="store-badge"> App Store</span></div></div>
+  <div className="footer-bottom"><span>© {new Date().getFullYear()} AMJ Automation</span><span>Privacy Policy &nbsp; | &nbsp; Terms & Conditions</span></div>
+</footer>}
+
+export function FloatingWhatsApp(){return <a className="floating-whatsapp" href="https://wa.me/919611278818" target="_blank" rel="noreferrer" aria-label="Chat with AMJ Automation on WhatsApp">WhatsApp</a>}
