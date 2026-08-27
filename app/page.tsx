@@ -1,104 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "AMJ Automation",
-  description: "Smart home automation, Ruvexa, franchise opportunities and OEM white-label solutions from AMJ Automation.",
-};
-
-const solutions = [
-  ["◉", "Smart Lighting"], ["▦", "Smart Switchboards"], ["✣", "Fan Control"], ["▤", "Curtains & Motors"],
-  ["◌", "Sensors"], ["⌂", "Security"], ["▶", "Scenes & Automations"], ["↗", "Energy Management"],
-];
-
-const scenes = [
-  ["☀", "Good Morning", "Lights on softly. Curtains open. The perfect start."],
-  ["↗", "Leaving Home", "Lights off. Appliances off. Home stays secure."],
-  ["▶", "Movie Time", "Lights dim. Curtains close. Enjoy the moment."],
-  ["⌂", "Welcome Home", "Lights on. Ambience set. Comfort, instantly."],
-  ["☾", "Good Night", "Everything off. Home secured. Sleep peacefully."],
-];
-
-export default function Home() {
-  return <main className="marketing-site">
-    <header className="marketing-nav">
-      <a className="marketing-brand" href="#top" aria-label="AMJ HomeOS home"><img src="/amj-homeos-logo.svg" alt="AMJ HomeOS"/></a>
-      <nav aria-label="Main navigation">
-        <a href="#solutions">Solutions</a><a href="#ruvexa">Ruvexa</a><a href="#partners">Partners</a><a href="#about">About</a><a href="#contact">Contact</a>
-      </nav>
-      <Link className="marketing-login" href="/sign-in">Login / Open Ruvexa</Link>
-    </header>
-
-    <section className="marketing-hero" id="top">
-      <div className="hero-copy">
-        <span className="hero-kicker">AMJ Automation</span>
-        <h1>Your Home.<br/><em>Intelligent by Design.</em></h1>
-        <p>Experience comfort, safety and convenience with smarter automation for every lifestyle.</p>
-        <div className="hero-pills"><span>Lighting</span><span>Fans</span><span>Curtains</span><span>Security</span><span>Sensors</span></div>
-        <div className="hero-actions"><a className="gold-button" href="#solutions">Explore Solutions</a><a className="outline-button" href="#contact">Book a Consultation</a></div>
-      </div>
-      <div className="hero-showcase" aria-label="Ruvexa smart home experience">
-        <div className="hero-switchboard"><span/><span/><span/><span/></div>
-        <strong>RUVEXA</strong>
-        <h2>Where Smart Living<br/>Meets Your <em>Aura</em></h2>
-        <p>Ruvexa — Powered by <b>AMJ HomeOS</b></p>
-      </div>
-    </section>
-
-    <section className="trust-strip">
-      <div><b>⌁</b><span><strong>One Unified System</strong><small>All your devices, one smart experience</small></span></div>
-      <div><b>▣</b><span><strong>Control Anywhere</strong><small>From anywhere in the world</small></span></div>
-      <div><b>✥</b><span><strong>Scenes & Automations</strong><small>Set it once. Enjoy every day.</small></span></div>
-      <div><b>♢</b><span><strong>Safe & Secure</strong><small>Enterprise-grade account security</small></span></div>
-      <div><b>☏</b><span><strong>Reliable Support</strong><small>Expert support when you need it</small></span></div>
-    </section>
-
-    <section className="marketing-section light" id="solutions">
-      <div className="marketing-heading"><span>SMART HOME SOLUTIONS</span><p>Everything works better when it works together.</p></div>
-      <div className="solution-grid">{solutions.map(([icon,name])=><article key={name}><b>{icon}</b><span>{name}</span></article>)}</div>
-    </section>
-
-    <section className="india-ruvexa" id="ruvexa">
-      <article className="india-card">
-        <span className="section-label">DESIGNED FOR</span><h2>INDIAN HOMES</h2>
-        <ul><li>New construction or retrofit</li><li>Works with existing wiring where supported</li><li>Wi‑Fi, Zigbee, Tuya & more</li><li>Scalable and future-ready</li><li>Designed for Indian living conditions</li></ul>
-        <a className="navy-button" href="#contact">Learn More</a>
-      </article>
-      <div className="home-visual" aria-hidden="true"><div className="house"><span/><span/><span/><span/></div></div>
-      <article className="ruvexa-card">
-        <span className="section-label">RUVEXA</span><h2>Where Smart Living Meets Your <em>Aura</em></h2>
-        <p>Your entire home, in your hand.</p>
-        <ul><li>Control rooms & devices</li><li>Scenes & automations</li><li>Schedules & timers</li><li>Real-time status</li><li>Secure remote access</li></ul>
-        <Link className="gold-button" href="/sign-in">Explore Ruvexa</Link>
-        <small>Ruvexa — Powered by AMJ HomeOS</small>
-      </article>
-    </section>
-
-    <section className="marketing-section light scenes-section">
-      <div className="marketing-heading"><span>LIVE SMARTER EVERY DAY</span></div>
-      <div className="scene-grid">{scenes.map(([icon,name,text])=><article key={name}><b>{icon}</b><strong>{name}</strong><p>{text}</p></article>)}</div>
-    </section>
-
-    <section className="partner-section" id="partners">
-      <div className="marketing-heading inverse"><span>PARTNER WITH AMJ AUTOMATION</span><p>Build a business, launch a brand, or scale your automation offering with AMJ.</p></div>
-      <div className="partner-grid">
-        <article><span className="partner-icon">◎</span><h2>Franchise Partner Program</h2><p>Build a successful automation business with AMJ.</p><ul><li>Territory opportunity</li><li>Training and certification</li><li>Marketing & sales support</li><li>Demo setup guidance</li><li>Installation & technical support</li><li>Growth-focused partner model</li></ul><a className="gold-button" href="#contact">Become a Franchise Partner</a></article>
-        <article><span className="partner-icon">⚙</span><h2>OEM & White Label Partner Program</h2><p>Build your brand. We power your success.</p><ul><li>AMJ HomeOS as your automation platform</li><li>White-label mobile app option</li><li>Custom branding & UI</li><li>Product catalogue & device integration</li><li>Partner / installer dashboard</li><li>End-to-end platform support</li></ul><a className="gold-button" href="#contact">Explore OEM / White Label</a></article>
-      </div>
-    </section>
-
-    <section className="marketing-section story-section" id="about">
-      <article><span className="section-label">REAL HOMES. REAL TRANSFORMATIONS.</span><h2>Automation designed around the way people actually live.</h2><p>AMJ Automation brings together smart controls, thoughtful installation and a unified software experience for homes, builders and partners.</p></article>
-      <article id="contact"><span className="section-label">PLANNING A SMARTER SPACE?</span><h2>Let’s design the right automation for your home or business.</h2><p>Talk to AMJ Automation about a new home, retrofit, franchise opportunity or OEM partnership.</p><a className="navy-button" href="mailto:info@amjautomation.in">Contact AMJ Automation</a></article>
-    </section>
-
-    <footer className="marketing-footer">
-      <div className="footer-brand"><img src="/amj-homeos-logo.svg" alt="AMJ HomeOS"/><p>Smarter homes. Better living. Powered by AMJ Automation.</p></div>
-      <div><strong>Solutions</strong><a href="#solutions">Smart Lighting</a><a href="#solutions">Switchboards</a><a href="#solutions">Curtains & Motors</a><a href="#solutions">Sensors</a></div>
-      <div><strong>Ruvexa</strong><a href="#ruvexa">Ruvexa App</a><Link href="/sign-in">Login</Link><a href="#ruvexa">How it Works</a></div>
-      <div><strong>Partners</strong><a href="#partners">Franchise Program</a><a href="#partners">OEM / White Label</a><a href="#contact">Partner Support</a></div>
-      <div><strong>Company</strong><a href="#about">About Us</a><a href="#contact">Contact</a><span>Hassan, Karnataka, India</span><a href="mailto:info@amjautomation.in">info@amjautomation.in</a></div>
-      <div className="footer-bottom"><span>© {new Date().getFullYear()} AMJ Automation. All rights reserved.</span><span>Ruvexa — Powered by AMJ HomeOS</span></div>
-    </footer>
-  </main>;
-}
+export const metadata: Metadata={title:"AMJ Automation | Smart Home Automation",description:"Premium smart home automation, Ruvexa, franchise opportunities and OEM white-label solutions from AMJ Automation."};
+const solutions=[["☼","Smart Lighting"],["▣","Smart Switchboards"],["✣","Fan Control"],["▥","Curtains & Motors"],["◉","Sensors"],["⌂","Security"],["▱","Scenes & Automations"],["↗","Energy Management"]];
+const scenes=[["scene-morning","☀","GOOD MORNING","Lights on softly. Curtains open. The perfect start."],["scene-leave","↗","LEAVING HOME","Lights off. Appliances off. Home stays secure."],["scene-movie","▶","MOVIE TIME","Lights dim. Curtains close. Enjoy the moment."],["scene-welcome","⌂","WELCOME HOME","Lights on. Ambience set. Comfort, instantly."],["scene-night","☾","GOOD NIGHT","Everything off. Home secured. Sleep peacefully."]];
+export default function Home(){return <main className="marketing-site" id="top">
+<header className="marketing-nav"><a className="marketing-brand" href="#top"><img src="/amj-homeos-logo.svg" alt="AMJ HomeOS"/></a><nav><a className="active" href="#top">Home</a><a href="#solutions">Solutions⌄</a><a href="#products">Products⌄</a><a href="#ruvexa">Ruvexa</a><a href="#partners">Partners⌄</a><a href="#projects">Projects</a><a href="#about">About</a><a href="#contact">Contact</a></nav><Link className="marketing-login" href="/sign-in">♙ &nbsp; Login / Open Ruvexa</Link></header>
+<section className="marketing-hero"><div className="hero-copy"><h1>Your Home.<br/><em>Intelligent by Design.</em></h1><p>Experience comfort, safety and convenience<br/>with smarter automation for every lifestyle.</p><div className="hero-pills"><span>☼ Lighting</span><span>✣ Fans</span><span>▥ Curtains</span><span>⌂ Security</span><span>◉ Sensors</span><span>••• & More</span></div><div className="hero-actions"><a className="gold-button" href="#solutions">Explore Solutions&nbsp; →</a><a className="outline-button" href="#contact">▣ &nbsp; Book a Consultation</a></div></div><div className="hero-showcase"><div className="hero-switchboard"><span>⌁</span><span>◉</span><span>⌂</span><span>◉</span></div><strong>RUVE<span>X</span>A</strong><h2>Where Smart Living<br/>Meets Your <em>Aura</em></h2><p>Ruvexa – Powered by <b>AMJ HomeOS</b></p></div></section>
+<section className="trust-strip"><div><b>⌁</b><span><strong>One Unified System</strong><small>All your devices,<br/>one smart experience.</small></span></div><div><b>▣</b><span><strong>Control Anywhere</strong><small>From anywhere in<br/>the world.</small></span></div><div><b>✥</b><span><strong>Scenes & Automations</strong><small>Set it once.<br/>Enjoy every day.</small></span></div><div><b>♢</b><span><strong>Safe & Secure</strong><small>Enterprise grade security<br/>for your home.</small></span></div><div><b>☏</b><span><strong>Reliable Support</strong><small>Expert support,<br/>always with you.</small></span></div></section>
+<section className="marketing-section light" id="solutions"><div className="marketing-heading"><span>SMART HOME SOLUTIONS</span><p>Everything works better when it works together.</p></div><div className="solution-grid">{solutions.map(([i,n])=><article key={n}><b>{i}</b><span>{n}</span></article>)}</div><a className="view-all" href="#products">View All Solutions&nbsp; →</a></section>
+<section className="india-ruvexa" id="ruvexa"><article className="india-card"><span>DESIGNED FOR</span><h2>INDIAN HOMES</h2><ul><li>New Construction or Retrofit</li><li>Works with existing wiring</li><li>Wi‑Fi, Zigbee, Tuya & more</li><li>Scalable & Future Ready</li><li>Made for Indian Conditions</li></ul><a className="navy-button" href="#contact">Learn More&nbsp; →</a></article><div className="home-photo"/><article className="ruvexa-card"><div><h2>RUVE<span>X</span>A</h2><p>Where Smart Living Meets Your <em>Aura</em></p><ul><li>Control Rooms & Devices</li><li>Scenes & Automations</li><li>Schedules & Timers</li><li>Real-time Status</li><li>Secure Remote Access</li></ul><Link className="gold-button" href="/sign-in">Explore Ruvexa App&nbsp; →</Link></div><div className="phone-stack"><div className="phone p1"><small>My Home</small><i/><i/><i/></div><div className="phone p2"><small>Living Room</small><i/><i/><i/></div><div className="phone p3"><small>Scenes</small><i/><i/></div></div><small className="powered">◉ Ruvexa – Powered by AMJ HomeOS</small></article></section>
+<section className="scene-section"><h2>LIVE SMARTER EVERY DAY</h2><div className="scene-grid">{scenes.map(([cls,icon,name,text])=><article className={cls} key={name}><div className="scene-photo"/><div><b>{icon}</b><strong>{name}</strong><p>{text}</p></div></article>)}</div></section>
+<section className="partner-section" id="partners"><h2>PARTNER WITH AMJ AUTOMATION</h2><div className="partner-grid"><article className="franchise"><span className="partner-icon">♟</span><div><h3>FRANCHISE PARTNER PROGRAM</h3><p>Build a Successful Automation Business with AMJ</p><ul><li>Exclusive territory</li><li>Complete training & certification</li><li>Marketing & sales support</li><li>Demo setup guidance</li><li>Installation & technical support</li><li>Attractive margins & growth opportunities</li></ul><a className="gold-button" href="#contact">Become a Franchise Partner&nbsp; →</a></div></article><article className="oem"><span className="partner-icon">⚙</span><div><h3>OEM & WHITE LABEL PARTNER PROGRAM</h3><p>Build Your Brand. We Power Your Success.</p><ul><li>AMJ HomeOS as your automation platform</li><li>White label mobile app (iOS & Android)</li><li>Custom branding & UI</li><li>Product catalog & device integration</li><li>Partner / installer dashboard</li><li>End-to-end platform support</li></ul><a className="gold-button" href="#contact">Explore OEM / White Label&nbsp; →</a></div></article></div></section>
+<section className="bottom-cta" id="projects"><article><b>⌂</b><div><strong>REAL HOMES. REAL TRANSFORMATIONS.</strong><p>Explore our projects and see automation in action.</p></div><a href="#contact">View Projects&nbsp; →</a></article><article id="contact"><b>▣</b><div><strong>PLANNING A SMARTER SPACE?</strong><p>Let's design the perfect automation for your home or business.</p></div><a href="mailto:info@amjautomation.in">Book a Consultation&nbsp; →</a><span className="whatsapp">● Chat on<br/>WhatsApp</span></article></section>
+<footer className="marketing-footer" id="about"><div className="footer-brand"><img src="/amj-homeos-logo.svg" alt="AMJ HomeOS"/><small>SMARTER HOME. BETTER LIFE.</small></div><div><strong>SOLUTIONS</strong><a href="#solutions">Smart Lighting</a><a href="#solutions">Smart Switchboards</a><a href="#solutions">Fan Control</a><a href="#solutions">Curtains & Motors</a><a href="#solutions">Security</a><a href="#solutions">Scenes & Automations</a><a href="#solutions">Energy Management</a></div><div id="products"><strong>PRODUCTS</strong><a>Switchboards</a><a>Gateways</a><a>Sensors</a><a>Modules</a><a>Controllers</a><a>Accessories</a></div><div><strong>RUVEXA</strong><a href="#ruvexa">Ruvexa App</a><a>Features</a><a>Screenshots</a><a>How It Works</a></div><div><strong>PARTNERS</strong><a href="#partners">Franchise Program</a><a href="#partners">OEM / White Label</a><a>Partner Support</a></div><div><strong>COMPANY</strong><a>About Us</a><a>Our Technology</a><a>Projects</a><a>Careers</a><a>Blog</a><a href="#contact">Contact Us</a></div><div><strong>GET IN TOUCH</strong><a>☎ +91 XXXXX XXXXX</a><a href="mailto:info@amjautomation.in">✉ info@amjautomation.in</a><a>⌖ Hassan, Karnataka, India</a></div><div className="footer-bottom"><span>© {new Date().getFullYear()} AMJ Automation</span><span>Privacy Policy &nbsp; | &nbsp; Terms & Conditions</span></div></footer>
+</main>}
