@@ -1,0 +1,2 @@
+import {PublicShell} from "../components/public-shell";
+export default function Projects(){return <PublicShell><section className="detail-hero"><span>AMJ AUTOMATION PROJECTS</span><h1>Projects</h1><p>Our smart-home project showcase will be added here as completed installations and approved project visuals become available.</p></section><section className="detail-section"><h2>Coming Soon</h2><p>We will publish selected AMJ Automation projects with room types, automation scope and project highlights once the project gallery is ready.</p></section></PublicShell>}
