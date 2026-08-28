@@ -2,6 +2,7 @@ import "./globals.css";
 import "./enhancements.css";
 import "./compact-mobile.css";
 import "./ruvexa-themes.css";
+import "./ruvexa-home.css";
 import "./marketing.css";
 import "./public-pages.css";
 import type { Metadata, Viewport } from "next";
