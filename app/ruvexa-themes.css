@@ -1,0 +1,17 @@
+/* Ruvexa Glass 3D light/dark theme layer */
+:root[data-ruvexa-theme="light"]{--rv-bg:#f4f7fb;--rv-card:rgba(255,255,255,.76);--rv-card2:rgba(244,248,252,.92);--rv-text:#172334;--rv-muted:#6f7c8b;--rv-line:rgba(115,132,151,.24);--rv-shadow:0 12px 30px rgba(32,54,78,.12),inset 0 1px 0 rgba(255,255,255,.95)}
+:root[data-ruvexa-theme="dark"]{--rv-bg:#09111d;--rv-card:rgba(19,31,48,.76);--rv-card2:rgba(13,24,39,.92);--rv-text:#f4f7fb;--rv-muted:#a8b4c2;--rv-line:rgba(183,203,225,.16);--rv-shadow:0 14px 34px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.08)}
+:root[data-ruvexa-theme] .app-shell,:root[data-ruvexa-theme] .workspace{background:var(--rv-bg);color:var(--rv-text)}
+:root[data-ruvexa-theme] .workspace .content-section,:root[data-ruvexa-theme] .room-card,:root[data-ruvexa-theme] .device-card{background:var(--rv-card);border-color:var(--rv-line);color:var(--rv-text);box-shadow:var(--rv-shadow);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+:root[data-ruvexa-theme] .workspace .muted,:root[data-ruvexa-theme] .workspace small{color:var(--rv-muted)}
+.ruvexa-theme-setting{margin-top:1rem;padding:.8rem;border-top:1px solid var(--rv-line,#dce3ea);border-bottom:1px solid var(--rv-line,#dce3ea)}
+.ruvexa-theme-setting label{display:flex;align-items:center;justify-content:space-between;gap:1rem}.ruvexa-theme-setting label>span{display:grid;gap:.1rem}.ruvexa-theme-setting select{width:auto;max-width:58%;min-height:38px;border-radius:12px;padding:.4rem .6rem}.more-signout{padding:.8rem 0}.more-signout button{width:100%}
+@media(max-width:760px){
+ :root[data-ruvexa-theme] .packed-board{background:linear-gradient(145deg,var(--rv-card),var(--rv-card2));border-color:var(--rv-line);box-shadow:var(--rv-shadow);backdrop-filter:blur(20px)}
+ :root[data-ruvexa-theme] .packed-board>header{background:var(--rv-card);border-color:var(--rv-line)}
+ :root[data-ruvexa-theme] .packed-board-controls{background:transparent}
+ :root[data-ruvexa-theme] .compact-switch{min-height:58px;background:linear-gradient(145deg,var(--rv-card),var(--rv-card2));border-color:var(--rv-line);box-shadow:0 5px 10px rgba(0,0,0,.14),inset 1px 1px 0 rgba(255,255,255,.18),inset -2px -3px 5px rgba(0,0,0,.08);color:var(--rv-text)}
+ :root[data-ruvexa-theme] .compact-switch-icon,:root[data-ruvexa-theme] .compact-switch-name{color:var(--rv-text);text-shadow:none}
+ :root[data-ruvexa-theme] .compact-switch.is-off{opacity:.72}
+ .ruvexa-theme-setting{margin-bottom:.15rem}.ruvexa-theme-setting label{align-items:flex-start;flex-direction:column}.ruvexa-theme-setting select{max-width:none;width:100%}
+}
