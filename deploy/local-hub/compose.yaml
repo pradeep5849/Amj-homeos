@@ -23,6 +23,7 @@ services:
       AMJ_HA_URL: http://home-assistant:8123
       AMJ_HA_TOKEN: ${AMJ_HA_TOKEN:-}
       AMJ_LOCAL_API_KEY: ${AMJ_LOCAL_API_KEY:-}
+      AMJ_ALLOWED_RELAY_ENTITIES: ${AMJ_ALLOWED_RELAY_ENTITIES:-}
       AMJ_LOCAL_BIND: 0.0.0.0
       AMJ_LOCAL_PORT: "8787"
     ports:
