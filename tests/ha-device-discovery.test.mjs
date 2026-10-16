@@ -15,6 +15,13 @@ describe("Home Assistant discovery normalization", () => {
     ]);
     expect(entities[1].name).toBe("Kitchen Light");
     expect(entities[1]).toMatchObject({
+      displayName: "Kitchen Light", isOnline: true, isOn: true,
+      isReadOnly: false, supportsPowerControl: true, isSensor: false,
+      isSecurityDevice: false, isCurtain: false, source: "home_assistant",
+    });
+    expect(entities[0]).toMatchObject({ isCurtain: true, isReadOnly: true, isOn: null });
+    expect(entities[2]).toMatchObject({ isSecurityDevice: true, isReadOnly: true });
+    expect(entities[1]).toMatchObject({
       deviceKey: "light.kitchen", category: "lighting", availabilityStatus: "online",
       unit: null, canToggle: true,
     });
@@ -30,6 +37,8 @@ describe("Home Assistant discovery normalization", () => {
     ]);
     expect(entities).toHaveLength(1);
     expect(entities[0].available).toBe(false);
+    expect(entities[0].isOnline).toBe(false);
+    expect(entities[0].isOn).toBe(null);
     expect(entities[0].availabilityStatus).toBe("offline");
     expect(entities[0].canToggle).toBe(false);
   });
@@ -41,6 +50,14 @@ describe("Home Assistant discovery normalization", () => {
     expect(result[1].unit).toBe("°C");
     expect(result[0].unit).toBe(null);
     expect(JSON.stringify(result)).not.toContain("private");
+  });
+  it("sanitizes names and allowlists sensor device classes", () => {
+    const entities = normalizeHaEntities([
+      { entity_id: "sensor.bad", state: "20", attributes: { friendly_name: "Bad\\nName", device_class: "custom_secret" } },
+      { entity_id: "binary_sensor.motion", state: "on", attributes: { device_class: "motion" } },
+    ]);
+    expect(entities[0]).toMatchObject({ isSensor: true, deviceClass: "motion" });
+    expect(entities[1]).toMatchObject({ displayName: "sensor.bad", deviceClass: null });
   });
   it("rejects invalid or oversized input", () => {
     expect(() => normalizeHaEntities({})).toThrow();
