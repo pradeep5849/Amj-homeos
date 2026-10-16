@@ -13,11 +13,12 @@ same Linux/Docker host. The AMJ bridge is NOT yet the full HomeOS controller.
 1. In this directory, run `docker compose up -d home-assistant`.
 2. Open `http://localhost:8123` **on the host** and finish Home Assistant onboarding.
 3. In Home Assistant, create a long-lived access token in the owner's profile.
-4. Create a local `.env` file with `AMJ_HA_TOKEN=<token>` and optionally `TZ=Asia/Kolkata`.
+4. Create a local `.env` file with `AMJ_HA_TOKEN=<token>`, `AMJ_LOCAL_API_KEY=<random 32+ character secret>` and optionally `TZ=Asia/Kolkata`.
    Do not commit the token or share this file. For production use a secrets vault, not env vars.
 5. Run `docker compose up -d --build`.
 6. Open `http://localhost:8787/health` on the host. HTTP 200 means HA API reachable;
    HTTP 503 means HA is unavailable or credentials are invalid.
+7. For developer-only device preview, send `GET http://localhost:8787/v1/devices/preview` with header `Authorization: Bearer <AMJ_LOCAL_API_KEY>`. This endpoint is read-only and is not RUVEXA pairing.
 
 The containers use a private bridge network; both published ports bind **host loopback only**.
 HA's config persists in `data/homeassistant`; back it up securely.
