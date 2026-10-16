@@ -1,9 +1,11 @@
 import { createServer } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
 const port = Number(process.env.AMJ_LOCAL_PORT ?? "8787");
 const haUrl = process.env.AMJ_HA_URL;
 const token = process.env.AMJ_HA_TOKEN;
+const localApiKey = process.env.AMJ_LOCAL_API_KEY;
 if (!haUrl || !token) throw new Error("AMJ_HA_URL and AMJ_HA_TOKEN required");
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid local port");
 const origin = new URL(haUrl);
@@ -12,29 +14,76 @@ if (!["http:", "https:"].includes(origin.protocol) || origin.pathname !== "/" ||
   throw new Error("Invalid HA origin");
 }
 const timeoutMs = 5000;
+const entityIdPattern = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
+const allowedDomains = new Set(["light", "switch", "fan", "sensor", "binary_sensor"]);
+const jsonHeaders = { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
+function send(res, status, data) {
+  res.writeHead(status, jsonHeaders);
+  res.end(JSON.stringify(data));
+}
+function authorized(req) {
+  if (!localApiKey || Buffer.byteLength(localApiKey) < 32) return false;
+  const auth = req.headers.authorization;
+  if (typeof auth !== "string" || !auth.startsWith("Bearer ")) return false;
+  const received = Buffer.from(auth.slice(7));
+  const expected = Buffer.from(localApiKey);
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
+async function haRequest(path) {
+  const response = await fetch(new URL(path, origin), {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    signal: AbortSignal.timeout(timeoutMs),
+    redirect: "error",
+  });
+  if (!response.ok) throw new Error("Home Assistant unavailable");
+  return response.json();
+}
+function mapPreview(state) {
+  if (!state || typeof state.entity_id !== "string" ||
+      !entityIdPattern.test(state.entity_id) || !allowedDomains.has(state.entity_id.split(".")[0]) ||
+      typeof state.state !== "string" || !state.attributes || typeof state.attributes !== "object" ||
+      Array.isArray(state.attributes)) return null;
+  const domain = state.entity_id.split(".")[0];
+  return {
+    entityId: state.entity_id,
+    name: typeof state.attributes.friendly_name === "string"
+      ? state.attributes.friendly_name.slice(0, 128) : state.entity_id,
+    domain,
+    available: state.state !== "unavailable" && state.state !== "unknown",
+    state: state.state,
+  };
+}
 const server = createServer(async (req, res) => {
-  // Health only: deliberately NO device listing, command dispatch, or token-bearing APIs.
-  // Future device APIs require explicit authenticated local pairing.
-  if (req.method !== "GET" || req.url !== "/health") {
-    res.writeHead(404, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify({ error: "Not found" }));
+  if (req.method === "GET" && req.url === "/health") {
+    try {
+      await haRequest("/api/");
+      send(res, 200, { service: "amj-homeos-local-prototype", haReachable: true });
+    } catch {
+      send(res, 503, { service: "amj-homeos-local-prototype", haReachable: false });
+    }
     return;
   }
-  let haReachable = false;
-  try {
-    const response = await fetch(new URL("/api/", origin), {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(timeoutMs),
-      redirect: "error",
-    });
-    haReachable = response.ok;
-  } catch {
-    // Never disclose credentials or network details in health responses.
+  if (req.method !== "GET" || req.url !== "/v1/devices/preview") {
+    send(res, 404, { error: "Not found" });
+    return;
   }
-  res.writeHead(haReachable ? 200 : 503, {
-    "Content-Type": "application/json", "Cache-Control": "no-store",
-  });
-  res.end(JSON.stringify({ service: "amj-homeos-local-prototype", haReachable }));
+  if (!localApiKey || Buffer.byteLength(localApiKey) < 32) {
+    send(res, 503, { error: "Local API not configured" });
+    return;
+  }
+  if (!authorized(req)) {
+    res.setHeader("WWW-Authenticate", "Bearer");
+    send(res, 401, { error: "Unauthorized" });
+    return;
+  }
+  try {
+    const states = await haRequest("/api/states");
+    if (!Array.isArray(states)) throw new Error("Invalid Home Assistant response");
+    const devices = states.map(mapPreview).filter(Boolean);
+    send(res, 200, { devices, count: devices.length, readOnly: true });
+  } catch {
+    send(res, 503, { error: "Device discovery temporarily unavailable" });
+  }
 });
 server.listen(port, bind);
