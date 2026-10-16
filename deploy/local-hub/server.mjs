@@ -61,6 +61,18 @@ function mapPreview(state) {
   };
 }
 const server = createServer(async (req, res) => {
+  // AMJ-owned, read-only status page. No Home Assistant UI or credentials exposed.
+  if (req.method === "GET" && (req.url === "/" || req.url === "/gateway")) {
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'",
+    });
+    res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AMJ HomeOS | Gateway</title><style>body{margin:0;background:#0c1424;color:#eef3fa;font:16px system-ui,sans-serif}main{max-width:760px;margin:8vh auto;padding:28px}.card{background:#17243a;border:1px solid #33465d;border-radius:18px;padding:28px}h1{margin-bottom:8px}small{color:#9fb4d0}.badge{display:inline-block;background:#183d36;color:#a2f2c5;padding:8px 14px;border-radius:40px}a{color:#b7d9ff}</style></head><body><main><div class="card"><small>AMJ SMART HOME GATEWAY</small><h1>AMJ HomeOS</h1><p>Local gateway management</p><p class="badge">Gateway service running</p><p>Device setup, commissioning and administration will be available here in future releases.</p><small>This status page does not expose device controls or administrator credentials.</small></div></main></body></html>`);
+    return;
+  }
   if (req.method === "GET" && req.url === "/health") {
     try {
       await haRequest("/api/");
