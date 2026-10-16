@@ -6,6 +6,8 @@ const SUPPORTED_DOMAINS = new Set([
 ]);
 const ENTITY_ID = /^([a-z][a-z0-9_]*)\.([a-z0-9_]+)$/;
 const MAX_ENTITIES = 1000;
+const UNITS = new Set(["°C", "°F", "%", "W", "kW", "kWh", "V", "A", "lx", "ppm", "Pa", "hPa"]);
+const CATEGORIES = { light: "lighting", switch: "switches", fan: "fans", sensor: "sensors", binary_sensor: "sensors", cover: "curtains", lock: "security" };
 
 export function normalizeHaEntities(states) {
   if (!Array.isArray(states)) throw new Error("Invalid Home Assistant states");
@@ -29,6 +31,11 @@ export function normalizeHaEntities(states) {
       name,
       state: entry.state,
       available: entry.state !== "unavailable" && entry.state !== "unknown",
+      deviceKey: entry.entity_id,
+      category: CATEGORIES[match[1]],
+      availabilityStatus: entry.state === "unavailable" ? "offline" : entry.state === "unknown" ? "unknown" : "online",
+      unit: match[1] === "sensor" && UNITS.has(entry.attributes.unit_of_measurement) ? entry.attributes.unit_of_measurement : null,
+      canToggle: ["light", "switch", "fan"].includes(match[1]) && !["unavailable", "unknown"].includes(entry.state),
     });
     if (entities.length >= MAX_ENTITIES) break;
   }
