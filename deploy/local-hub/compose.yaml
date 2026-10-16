@@ -1,0 +1,39 @@
+services:
+  home-assistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    volumes:
+      - ./data/homeassistant:/config
+    environment:
+      TZ: ${TZ:-Asia/Kolkata}
+    ports:
+      - "127.0.0.1:8123:8123"
+    networks:
+      - amj-local
+
+  amj-local:
+    build:
+      context: ../..
+      dockerfile: deploy/local-hub/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - home-assistant
+    environment:
+      NODE_ENV: production
+      AMJ_HA_URL: http://home-assistant:8123
+      AMJ_HA_TOKEN: ${AMJ_HA_TOKEN:?Set AMJ_HA_TOKEN in local environment}
+      AMJ_LOCAL_BIND: 0.0.0.0
+      AMJ_LOCAL_PORT: "8787"
+    ports:
+      - "127.0.0.1:8787:8787"
+    networks:
+      - amj-local
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  amj-local:
+    driver: bridge
