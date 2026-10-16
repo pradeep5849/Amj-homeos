@@ -17,7 +17,7 @@ export type HaEvent = {
 };
 
 export interface HaSocket {
-  addEventListener(type: "open" | "message" | "close" | "error", listener: (event: any) => void): void;
+  addEventListener(type: "open" | "message" | "close" | "error", listener: (event: { data?: unknown }) => void): void;
   send(data: string): void;
   close(): void;
 }
@@ -140,8 +140,8 @@ export class HomeAssistantClient {
       timer = setTimeout(() => fail("Home Assistant WebSocket handshake timed out"), this.timeoutMs);
       socket.addEventListener("message", (event) => {
         if (closed) return;
-        let msg: any;
-        try { msg = JSON.parse(String(event.data)); } catch { fail("Invalid Home Assistant WebSocket JSON"); return; }
+        let msg: Record<string, unknown>;
+        try { msg = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { fail("Invalid Home Assistant WebSocket JSON"); return; }
         if (msg.type === "auth_required" && !authenticated) {
           socket.send(JSON.stringify({ type: "auth", access_token: this.token }));
         } else if (msg.type === "auth_ok" && !authenticated) {
@@ -156,7 +156,7 @@ export class HomeAssistantClient {
           settled = true;
           cleanup();
           resolve(close);
-        } else if (msg.type === "event" && msg.id === subscriptionId && subscribed && msg.event?.event_type === "state_changed") {
+        } else if (msg.type === "event" && msg.id === subscriptionId && subscribed && (msg.event as HaEvent | undefined)?.event_type === "state_changed") {
           try { onEvent(msg.event as HaEvent); } catch { /* consumer errors must not break transport */ }
         }
       });
