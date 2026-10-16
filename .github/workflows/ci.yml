@@ -11,9 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  schema:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       DATABASE_URL: postgresql://amj:amj@localhost:5432/amj?schema=public
     steps:
@@ -22,22 +22,72 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Validate Prisma schema
-        run: npm run prisma:validate
-      - name: Generate Prisma client
-        run: npm run prisma:generate
-      - name: TypeScript typecheck
-        run: npm run typecheck
-      - name: Lint
-        run: npm run lint
-      - name: Unit tests
-        run: npm test
-      - name: Build
-        run: npm run build
-      - name: Validate local hub JavaScript
-        run: |
+      - run: npm ci
+      - run: npm run prisma:validate
+
+  types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://amj:amj@localhost:5432/amj?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm run typecheck
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://amj:amj@localhost:5432/amj?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm test
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://amj:amj@localhost:5432/amj?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm run build
+
+  hub-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
           node --check deploy/local-hub/server.mjs
           node --check deploy/local-hub/pairing.mjs
           node --check deploy/local-hub/commands.mjs
