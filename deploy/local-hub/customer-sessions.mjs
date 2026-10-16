@@ -35,6 +35,11 @@ export function createCustomerSessionAuthority({ now = Date.now, ttlMs = 10 * 60
       const actual = hash(token);
       return actual.length === item.secretHash.length && timingSafeEqual(actual, item.secretHash);
     },
+    approvedEntities({ sessionId, token }) {
+      if (!this.verify({ sessionId, token })) return null;
+      const item = sessions.get(sessionId);
+      return item ? new Set(item.allowed) : null;
+    },
     revoke(id) { return sessions.delete(id); },
     count() { prune(); return sessions.size; },
   };
