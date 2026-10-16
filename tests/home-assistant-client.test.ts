@@ -22,11 +22,11 @@ describe("HomeAssistantClient", () => {
     await expect(client.callService("light", "turn_on", "light.kitchen", { entity_id: "light.other" })).rejects.toThrow();
   });
   it("authenticates and subscribes to state changes", async () => {
-    const listeners = new Map<string, ((event: any) => void)[]>();
+    const listeners = new Map<string, ((event: { data?: unknown }) => void)[]>();
     const send = vi.fn();
     const close = vi.fn();
     const socket = {
-      addEventListener: (type: string, callback: (event: any) => void) =>
+      addEventListener: (type: string, callback: (event: { data?: unknown }) => void) =>
         listeners.set(type, [...(listeners.get(type) ?? []), callback]),
       send,
       close,
