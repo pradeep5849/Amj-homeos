@@ -21,8 +21,8 @@ services:
     environment:
       NODE_ENV: production
       AMJ_HA_URL: http://home-assistant:8123
-      AMJ_HA_TOKEN: ${AMJ_HA_TOKEN:?Set AMJ_HA_TOKEN in local environment}
-      AMJ_LOCAL_API_KEY: ${AMJ_LOCAL_API_KEY:?Set a random local API key (32+ bytes)}
+      AMJ_HA_TOKEN: ${AMJ_HA_TOKEN:-}
+      AMJ_LOCAL_API_KEY: ${AMJ_LOCAL_API_KEY:-}
       AMJ_LOCAL_BIND: 0.0.0.0
       AMJ_LOCAL_PORT: "8787"
     ports:
