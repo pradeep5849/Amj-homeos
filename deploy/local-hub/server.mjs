@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createLocalPairingAuthority } from "./pairing.mjs";
 import { parseAllowedRelayCommand } from "./commands.mjs";
 import { createCustomerSessionAuthority } from "./customer-sessions.mjs";
+import { normalizeHaEntities } from "./ha-device-discovery.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
 const port = Number(process.env.AMJ_LOCAL_PORT ?? "8787");
@@ -218,6 +219,18 @@ const server = createServer(async (req, res) => {
       send(res, 202, { accepted: true, entityId: command.entityId, requestedPower: command.service === "turn_on" });
     } catch {
       send(res, 503, { error: "Relay command unavailable" });
+    }
+    return;
+  }
+  // Installer-only, read-only inventory; no lock/cover control or credentials.
+  if (req.method === "GET" && req.url === "/v1/devices/discovery") {
+    if (!authorized(req)) { send(res, 401, { error: "Unauthorized" }); return; }
+    try {
+      const states = await haRequest("/api/states");
+      const devices = normalizeHaEntities(states);
+      send(res, 200, { devices, count: devices.length, readOnly: true });
+    } catch {
+      send(res, 503, { error: "Device discovery temporarily unavailable" });
     }
     return;
   }
