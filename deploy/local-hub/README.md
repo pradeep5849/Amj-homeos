@@ -27,3 +27,15 @@ HA's config persists in `data/homeassistant`; back it up securely.
 RUVEXA pairing, authorized device endpoints, cloud enrollment, offline AMJ automations,
 secure secret storage, supervised updates, native integrations and hardware qualification.
 Do not install at customer sites until these gates are completed and verified.
+
+## Temporary local pairing prototype
+For developer testing only, the installer can send `POST /v1/pairing/sessions` with
+`Authorization: Bearer <AMJ_LOCAL_API_KEY>` from the host. It returns a random
+`sessionId`, temporary bearer `token` and `expiresAt`. To read
+`GET /v1/devices/preview`, provide `Authorization: Bearer <temporary token>`
+and `X-AMJ-Pairing-Session: <sessionId>`. Tokens expire after 15 minutes and
+are erased on restart. A maximum of eight concurrent sessions is allowed.
+**Do not embed the bootstrap API key in the RUVEXA app.** This is not real
+customer enrollment: no mobile identity, device binding, TLS, confirmation
+display or persistent credentials exist yet. Never expose the API outside
+loopback or deploy this pairing prototype in a customer's home.
