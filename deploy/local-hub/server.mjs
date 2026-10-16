@@ -4,6 +4,7 @@ import { createLocalPairingAuthority } from "./pairing.mjs";
 import { parseAllowedRelayCommand } from "./commands.mjs";
 import { createCustomerSessionAuthority } from "./customer-sessions.mjs";
 import { normalizeHaEntities } from "./ha-device-discovery.mjs";
+import { buildInventorySnapshot } from "./device-inventory.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
 const port = Number(process.env.AMJ_LOCAL_PORT ?? "8787");
@@ -219,6 +220,17 @@ const server = createServer(async (req, res) => {
       send(res, 202, { accepted: true, entityId: command.entityId, requestedPower: command.service === "turn_on" });
     } catch {
       send(res, 503, { error: "Relay command unavailable" });
+    }
+    return;
+  }
+  // Installer-only inventory snapshot for integration with future RUVEXA UI.
+  if (req.method === "GET" && req.url === "/v1/devices/inventory") {
+    if (!authorized(req)) { send(res, 401, { error: "Unauthorized" }); return; }
+    try {
+      const devices = normalizeHaEntities(await haRequest("/api/states"));
+      send(res, 200, buildInventorySnapshot(devices));
+    } catch {
+      send(res, 503, { error: "Device inventory temporarily unavailable" });
     }
     return;
   }
