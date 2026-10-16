@@ -1,0 +1,44 @@
+name: AMJ HomeOS CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, feature/ha01-hub-provisioning-foundation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://amj:amj@localhost:5432/amj?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate Prisma schema
+        run: npm run prisma:validate
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: TypeScript typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Validate local hub JavaScript
+        run: |
+          node --check deploy/local-hub/server.mjs
+          node --check deploy/local-hub/pairing.mjs
+          node --check deploy/local-hub/commands.mjs
+          node --check deploy/local-hub/customer-sessions.mjs
