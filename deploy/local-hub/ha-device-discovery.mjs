@@ -9,7 +9,7 @@ const MAX_ENTITIES = 1000;
 const MAX_NAME_LENGTH = 128;
 const SAFE_DEVICE_CLASSES = new Set(["temperature", "humidity", "motion", "occupancy", "door", "window", "battery", "power", "energy", "illuminance", "smoke", "moisture", "connectivity"]);
 const POWER_DOMAINS = new Set(["light", "switch", "fan"]);
-const isPlainText = (value) => typeof value === "string" && !/[\\x00-\\x1f\\x7f]/.test(value);
+const isPlainText = (value) => typeof value === "string" && !/[\x00-\x1f\x7f]/.test(value);
 const safeName = (value, fallback) => isPlainText(value) && value.trim() ? value.trim().slice(0, MAX_NAME_LENGTH) : fallback;
 const UNITS = new Set(["°C", "°F", "%", "W", "kW", "kWh", "V", "A", "lx", "ppm", "Pa", "hPa"]);
 const CATEGORIES = { light: "lighting", switch: "switches", fan: "fans", sensor: "sensors", binary_sensor: "sensors", cover: "curtains", lock: "security" };
