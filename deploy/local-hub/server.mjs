@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { timingSafeEqual } from "node:crypto";
+import { createLocalPairingAuthority } from "./pairing.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
 const port = Number(process.env.AMJ_LOCAL_PORT ?? "8787");
@@ -14,6 +15,7 @@ if (!["http:", "https:"].includes(origin.protocol) || origin.pathname !== "/" ||
   throw new Error("Invalid HA origin");
 }
 const timeoutMs = 5000;
+const pairing = createLocalPairingAuthority();
 const entityIdPattern = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
 const allowedDomains = new Set(["light", "switch", "fan", "sensor", "binary_sensor"]);
 const jsonHeaders = { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
@@ -64,6 +66,20 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  // Installer bootstrap is a development-only flow and remains loopback-only.
+  // A paired token grants read-only discovery, never device commands.
+  if (req.method === "POST" && req.url === "/v1/pairing/sessions") {
+    if (!authorized(req)) {
+      send(res, 401, { error: "Unauthorized" });
+      return;
+    }
+    try {
+      send(res, 201, pairing.issue());
+    } catch {
+      send(res, 429, { error: "Pairing capacity reached" });
+    }
+    return;
+  }
   if (req.method !== "GET" || req.url !== "/v1/devices/preview") {
     send(res, 404, { error: "Not found" });
     return;
@@ -72,7 +88,11 @@ const server = createServer(async (req, res) => {
     send(res, 503, { error: "Local API not configured" });
     return;
   }
-  if (!authorized(req)) {
+  const sessionId = req.headers["x-amj-pairing-session"];
+  const auth = req.headers.authorization;
+  const paired = typeof auth === "string" && auth.startsWith("Bearer ") &&
+    pairing.verify(sessionId, auth.slice(7));
+  if (!authorized(req) && !paired) {
     res.setHeader("WWW-Authenticate", "Bearer");
     send(res, 401, { error: "Unauthorized" });
     return;
