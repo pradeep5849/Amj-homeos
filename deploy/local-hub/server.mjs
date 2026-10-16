@@ -223,12 +223,19 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
-  // Installer-only inventory snapshot for integration with future RUVEXA UI.
+  // Installer sees the full read-only inventory; a customer session sees only
+  // devices explicitly approved by the installer, never all Home Assistant states.
   if (req.method === "GET" && req.url === "/v1/devices/inventory") {
-    if (!authorized(req)) { send(res, 401, { error: "Unauthorized" }); return; }
+    const installer = authorized(req);
+    const sessionId = req.headers["x-amj-session-id"];
+    const auth = req.headers.authorization;
+    const sessionToken = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    const approved = installer ? null : customerSessions.approvedEntities({ sessionId, token: sessionToken });
+    if (!installer && !approved) { send(res, 401, { error: "Unauthorized" }); return; }
     try {
       const devices = normalizeHaEntities(await haRequest("/api/states"));
-      send(res, 200, buildInventorySnapshot(devices));
+      const visible = installer ? devices : devices.filter(device => approved.has(device.entityId));
+      send(res, 200, buildInventorySnapshot(visible));
     } catch {
       send(res, 503, { error: "Device inventory temporarily unavailable" });
     }
