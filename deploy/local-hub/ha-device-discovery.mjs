@@ -6,6 +6,11 @@ const SUPPORTED_DOMAINS = new Set([
 ]);
 const ENTITY_ID = /^([a-z][a-z0-9_]*)\.([a-z0-9_]+)$/;
 const MAX_ENTITIES = 1000;
+const MAX_NAME_LENGTH = 128;
+const SAFE_DEVICE_CLASSES = new Set(["temperature", "humidity", "motion", "occupancy", "door", "window", "battery", "power", "energy", "illuminance", "smoke", "moisture", "connectivity"]);
+const POWER_DOMAINS = new Set(["light", "switch", "fan"]);
+const isPlainText = (value) => typeof value === "string" && !/[\\x00-\\x1f\\x7f]/.test(value);
+const safeName = (value, fallback) => isPlainText(value) && value.trim() ? value.trim().slice(0, MAX_NAME_LENGTH) : fallback;
 const UNITS = new Set(["°C", "°F", "%", "W", "kW", "kWh", "V", "A", "lx", "ppm", "Pa", "hPa"]);
 const CATEGORIES = { light: "lighting", switch: "switches", fan: "fans", sensor: "sensors", binary_sensor: "sensors", cover: "curtains", lock: "security" };
 
@@ -21,9 +26,8 @@ export function normalizeHaEntities(states) {
         Array.isArray(entry.attributes)) continue;
     const match = ENTITY_ID.exec(entry.entity_id);
     if (!match || !SUPPORTED_DOMAINS.has(match[1]) || seen.has(entry.entity_id)) continue;
-    const name = typeof entry.attributes.friendly_name === "string"
-      ? entry.attributes.friendly_name.slice(0, 128)
-      : entry.entity_id;
+    const name = safeName(entry.attributes.friendly_name, entry.entity_id);
+    const online = entry.state !== "unavailable" && entry.state !== "unknown";
     seen.add(entry.entity_id);
     entities.push({
       entityId: entry.entity_id,
@@ -35,7 +39,18 @@ export function normalizeHaEntities(states) {
       category: CATEGORIES[match[1]],
       availabilityStatus: entry.state === "unavailable" ? "offline" : entry.state === "unknown" ? "unknown" : "online",
       unit: match[1] === "sensor" && UNITS.has(entry.attributes.unit_of_measurement) ? entry.attributes.unit_of_measurement : null,
-      canToggle: ["light", "switch", "fan"].includes(match[1]) && !["unavailable", "unknown"].includes(entry.state),
+      canToggle: POWER_DOMAINS.has(match[1]) && online,
+      // Additional read-only fields; never forward HA attribute objects.
+      displayName: name,
+      isOnline: online,
+      isOn: POWER_DOMAINS.has(match[1]) && online ? entry.state === "on" : null,
+      isReadOnly: !POWER_DOMAINS.has(match[1]),
+      deviceClass: SAFE_DEVICE_CLASSES.has(entry.attributes.device_class) ? entry.attributes.device_class : null,
+      supportsPowerControl: POWER_DOMAINS.has(match[1]),
+      isSensor: match[1] === "sensor" || match[1] === "binary_sensor",
+      isSecurityDevice: match[1] === "lock",
+      isCurtain: match[1] === "cover",
+      source: "home_assistant",
     });
     if (entities.length >= MAX_ENTITIES) break;
   }
