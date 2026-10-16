@@ -53,7 +53,7 @@ describe("Home Assistant discovery normalization", () => {
   });
   it("sanitizes names and allowlists sensor device classes", () => {
     const entities = normalizeHaEntities([
-      { entity_id: "sensor.bad", state: "20", attributes: { friendly_name: "Bad\\nName", device_class: "custom_secret" } },
+      { entity_id: "sensor.bad", state: "20", attributes: { friendly_name: "Bad\nName", device_class: "custom_secret" } },
       { entity_id: "binary_sensor.motion", state: "on", attributes: { device_class: "motion" } },
     ]);
     expect(entities[0]).toMatchObject({ isSensor: true, deviceClass: "motion" });
