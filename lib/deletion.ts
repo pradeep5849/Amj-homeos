@@ -23,9 +23,20 @@ export async function deleteHomeOwner(actor:Actor,ownerId:string,confirmation:st
 export async function deleteRoom(actor:Actor,homeId:string,roomId:string){await homeAccess(actor,homeId,true);if(actor.role==="HOME_USER")throw new HttpError(403,"Home Owner access required");const room=await prisma.room.findFirst({where:{id:roomId,homeId},select:{id:true}});if(!room)throw new HttpError(404,"Room not found");const [devices,boards]=await Promise.all([prisma.device.count({where:{roomId,isArchived:false}}),prisma.$queryRaw<{count:bigint}[]>(Prisma.sql`SELECT COUNT(*)::bigint AS count FROM "InstalledSwitchboard" WHERE "roomId"=${roomId}::uuid AND "isArchived"=false`)]);if(devices||Number(boards[0]?.count??0))throw new HttpError(409,"Remove or move this Room's devices and switchboards first");await prisma.room.delete({where:{id:roomId}})}
 
 export async function removeSwitchboard(actor:Actor,homeId:string,boardId:string){
- await homeAccess(actor,homeId,true);if(actor.role==="HOME_USER")throw new HttpError(403,"Home Owner access required");
- const board=await prisma.$queryRaw<{id:string}[]>(Prisma.sql`SELECT "id" FROM "InstalledSwitchboard" WHERE "id"=${boardId}::uuid AND "homeId"=${homeId}::uuid AND "isArchived"=false LIMIT 1`);if(!board.length)throw new HttpError(404,"Switchboard not found");
- const rows=await prisma.$queryRaw<{id:string;deviceId:string|null}[]>(Prisma.sql`SELECT c."id",c."deviceId" FROM "InstalledSwitchboardChannel" c WHERE c."switchboardId"=${boardId}::uuid`);const ids=rows.flatMap(r=>r.deviceId?[r.deviceId]:[]);
- if(ids.length){const refs=await prisma.$queryRaw<{n:bigint}[]>(Prisma.sql`SELECT ((SELECT COUNT(*) FROM "SceneAction" WHERE "deviceId"::text IN (${Prisma.join(ids)}))+(SELECT COUNT(*) FROM "AutomationAction" WHERE "deviceId"::text IN (${Prisma.join(ids)}))+(SELECT COUNT(*) FROM "AutomationTrigger" WHERE "deviceId"::text IN (${Prisma.join(ids)}))+(SELECT COUNT(*) FROM "Timer" WHERE "deviceId"::text IN (${Prisma.join(ids)})))::bigint AS n`);if(Number(refs[0]?.n??0)>0)throw new HttpError(409,"Remove this switchboard from Scenes, Automations and Timers first");}
- await prisma.$transaction(async tx=>{if(ids.length)await tx.device.updateMany({where:{id:{in:ids}},data:{isArchived:true}});await tx.$executeRaw(Prisma.sql`UPDATE "InstalledSwitchboard" SET "isArchived"=true,"updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${boardId}::uuid AND "homeId"=${homeId}::uuid`)});
+ await homeAccess(actor,homeId,true);
+ if(actor.role==="HOME_USER")throw new HttpError(403,"Home Owner access required");
+ // Lock the board and its channels before checking dependencies. This prevents
+ // two removals from racing and avoids archiving a stale set of linked devices.
+ await prisma.$transaction(async tx=>{
+  const board=await tx.$queryRaw<{id:string}[]>(Prisma.sql`SELECT "id" FROM "InstalledSwitchboard" WHERE "id"=${boardId}::uuid AND "homeId"=${homeId}::uuid AND "isArchived"=false FOR UPDATE`);
+  if(!board.length)throw new HttpError(404,"Switchboard not found");
+  const rows=await tx.$queryRaw<{id:string;deviceId:string|null}[]>(Prisma.sql`SELECT c."id",c."deviceId" FROM "InstalledSwitchboardChannel" c WHERE c."switchboardId"=${boardId}::uuid FOR UPDATE`);
+  const ids=[...new Set(rows.flatMap(r=>r.deviceId?[r.deviceId]:[]))];
+  if(ids.length){
+   const refs=await tx.$queryRaw<{n:bigint}[]>(Prisma.sql`SELECT ((SELECT COUNT(*) FROM "SceneAction" WHERE "deviceId"::text IN (${Prisma.join(ids)}))+(SELECT COUNT(*) FROM "AutomationAction" WHERE "deviceId"::text IN (${Prisma.join(ids)}))+(SELECT COUNT(*) FROM "AutomationTrigger" WHERE "deviceId"::text IN (${Prisma.join(ids)}))+(SELECT COUNT(*) FROM "Timer" WHERE "deviceId"::text IN (${Prisma.join(ids)})))::bigint AS n`);
+   if(Number(refs[0]?.n??0)>0)throw new HttpError(409,"Remove this switchboard from Scenes, Automations and Timers first");
+   await tx.device.updateMany({where:{id:{in:ids},homeId},data:{isArchived:true}});
+  }
+  await tx.$executeRaw(Prisma.sql`UPDATE "InstalledSwitchboard" SET "isArchived"=true,"updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${boardId}::uuid AND "homeId"=${homeId}::uuid`);
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
