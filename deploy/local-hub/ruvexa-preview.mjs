@@ -165,9 +165,9 @@ export const ruvexaScript = `(() => {
             select.addEventListener("input", () => { reading.textContent = select.value + "%"; });
             label.append(reading);
           }
-          const max = percentageMode ? 100 : device.fanSpeedStages;
-          const start = percentageMode ? 0 : 1;
-          const step = percentageMode ? 5 : 1;
+          const max = device.fanSpeedStages;
+          const start = 1;
+          const step = 1;
           if (!percentageMode) for (let stage = start; stage <= max; stage += step) {
             const option = document.createElement("option");
             option.value = String(stage);
