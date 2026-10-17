@@ -173,7 +173,7 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (req.method === "POST" && req.url === "/v1/customer-sessions") {
-    // Installer explicitly grants a client a subset of configured relay devices.
+    // Installer explicitly grants a client a subset of configured relay/curtain devices.
     if (!authorized(req)) { send(res, 401, { error: "Unauthorized" }); return; }
     let raw = "";
     try {
@@ -184,7 +184,7 @@ const server = createServer(async (req, res) => {
       const input = JSON.parse(raw);
       if (!input || typeof input !== "object" || Array.isArray(input) ||
           !Array.isArray(input.allowedEntities) ||
-          !input.allowedEntities.every(id => relayAllowlist.has(id))) {
+          !input.allowedEntities.every(id => relayAllowlist.has(id) || curtainAllowlist.has(id))) {
         send(res, 400, { error: "Invalid device grant" }); return;
       }
       send(res, 201, customerSessions.issue(input));
