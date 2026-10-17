@@ -48,6 +48,7 @@ export async function connectRtspSession(input: {
     socket.setTimeout(timeout);
     socket.once("error", error => finish(error));
     socket.once("timeout", () => finish(new Error("RTSP connection timed out")));
+    socket.once("close", () => finish(new Error("RTSP camera closed before first RTP packet")));
     socket.once("connect", () => send("DESCRIBE", streamUri, 1, "Accept: application/sdp\r\n"));
     socket.on("data", chunk => {
       if (finished) return;
@@ -59,9 +60,9 @@ export async function connectRtspSession(input: {
           finish();
           return;
         }
-        if (prior === "DESCRIBE" && (gate.state === "SETUP" || gate.state === "PLAY" || gate.state === "STREAMING")) {
+        if (prior === "DESCRIBE" && gate.state === "SETUP") {
           send("SETUP", controlUri, 2, "Transport: RTP/AVP/TCP;unicast;interleaved=0-1\r\n");
-        } else if (prior === "SETUP" && (gate.state === "PLAY" || gate.state === "STREAMING")) {
+        } else if (prior === "SETUP" && gate.state === "PLAY") {
           const sessionId = gate.negotiatedSessionId;
           if (!sessionId) throw new Error("RTSP SETUP session ID missing");
           send("PLAY", streamUri, 3, "Session: " + sessionId + "\r\nRange: npt=0.000-\r\n");
