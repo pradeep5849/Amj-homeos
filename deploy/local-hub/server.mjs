@@ -5,6 +5,7 @@ import { parseAllowedRelayCommand } from "./commands.mjs";
 import { createCustomerSessionAuthority } from "./customer-sessions.mjs";
 import { normalizeHaEntities } from "./ha-device-discovery.mjs";
 import { buildInventorySnapshot } from "./device-inventory.mjs";
+import { ruvexaHtml, ruvexaScript } from "./ruvexa-preview.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
 const port = Number(process.env.AMJ_LOCAL_PORT ?? "8787");
@@ -63,6 +64,25 @@ function mapPreview(state) {
   };
 }
 const server = createServer(async (req, res) => {
+  // Same-origin read-only RUVEXA customer preview. Installer key is never exposed.
+  if (req.method === "GET" && req.url === "/ruvexa-preview") {
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+      "Referrer-Policy": "no-referrer",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; connect-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'",
+    });
+    res.end(ruvexaHtml);
+    return;
+  }
+  if (req.method === "GET" && req.url === "/ruvexa-preview.js") {
+    res.writeHead(200, {
+      "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    });
+    res.end(ruvexaScript);
+    return;
+  }
   if (req.method === "GET" && req.url === "/gateway-status.js") {
     res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
     res.end("(async () => {\n  const status = document.getElementById(\"gateway-status\");\n  const capabilities = document.getElementById(\"gateway-capabilities\");\n  try {\n    const response = await fetch(\"/v1/gateway/info\", { cache: \"no-store\" });\n    if (!response.ok) throw new Error(\"Status unavailable\");\n    const info = await response.json();\n    status.textContent = info.platform + \" — \" + (info.status === \"setup_required\" ? \"Setup required\" : \"Status available\");\n    const flags = info.capabilities || {};\n    capabilities.textContent = \"Device preview: \" + (flags.localDevicePreview ? \"Available\" : \"Unavailable\") +\n      \" · Zigbee commissioning: \" + (flags.zigbeeCommissioning ? \"Available\" : \"Not yet available\") +\n      \" · Wi-Fi commissioning: \" + (flags.wifiCommissioning ? \"Available\" : \"Not yet available\") +\n      \" · Cameras: \" + (flags.cameraIntegration ? \"Available\" : \"Not yet available\");\n  } catch {\n    status.textContent = \"Gateway information unavailable\";\n  }\n})();");
