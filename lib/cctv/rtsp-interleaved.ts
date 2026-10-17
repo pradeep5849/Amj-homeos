@@ -34,6 +34,17 @@ export function inspectRtpPacket(packet: Uint8Array) {
   const csrcCount = packet[0] & 15;
   const headerSize = 12 + csrcCount * 4;
   if (packet.length < headerSize) throw new Error("Truncated RTP header");
+  let payloadOffset = headerSize;
+  if (packet[0] & 0x10) {
+    if (packet.length < payloadOffset + 4) throw new Error("Truncated RTP extension");
+    const extensionWords = (packet[payloadOffset + 2] << 8) | packet[payloadOffset + 3];
+    payloadOffset += 4 + extensionWords * 4;
+    if (packet.length < payloadOffset) throw new Error("Truncated RTP extension");
+  }
+  const padding = (packet[0] & 0x20) ? packet[packet.length - 1] : 0;
+  if (padding > packet.length - payloadOffset || ((packet[0] & 0x20) && padding === 0)) {
+    throw new Error("Invalid RTP padding");
+  }
   const view = Buffer.from(packet);
   return {
     marker: Boolean(packet[1] & 0x80),
@@ -41,6 +52,7 @@ export function inspectRtpPacket(packet: Uint8Array) {
     sequence: view.readUInt16BE(2),
     timestamp: view.readUInt32BE(4),
     ssrc: view.readUInt32BE(8),
-    headerSize,
+    headerSize: payloadOffset,
+    payloadLength: packet.length - payloadOffset - padding,
   };
 }
