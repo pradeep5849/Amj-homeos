@@ -28,6 +28,8 @@ export function buildInventorySnapshot(devices, { generatedAt = new Date().toISO
       readOnly: device.isReadOnly === true,
       supportsFanSpeed: device.supportsFanSpeed === true,
       fanSpeedPercentage: device.fanSpeedPercentage ?? null,
+      fanSpeedStages: device.fanSpeedStages ?? null,
+      fanSpeedStage: device.fanSpeedStage ?? null,
     };
   });
   return { generatedAt, count: items.length, summary, devices: items, readOnly: true };
