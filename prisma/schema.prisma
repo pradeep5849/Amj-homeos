@@ -511,6 +511,7 @@ model Gateway {
   updatedAt         DateTime              @updatedAt
   home              Home                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
 
+  @@unique([id, homeId])
   @@index([homeId, isArchived])
 }
 
