@@ -1,5 +1,6 @@
 ALTER TABLE "Gateway" ADD COLUMN "cctvPublicKey" TEXT;
 ALTER TABLE "Gateway" ADD COLUMN "cctvPairedAt" TIMESTAMP(3);
+CREATE UNIQUE INDEX "Gateway_id_homeId_key" ON "Gateway"("id", "homeId");
 CREATE TABLE "CctvGatewayPairingChallenge" (
   "id" UUID NOT NULL,
   "gatewayId" UUID NOT NULL,
