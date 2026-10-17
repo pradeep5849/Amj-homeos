@@ -8,6 +8,7 @@ import { buildInventorySnapshot } from "./device-inventory.mjs";
 import { parseAllowedFanSpeed, parseFanStageConfig } from "./fan-speed.mjs";
 import { parseAllowedCurtainCommand } from "./curtain-commands.mjs";
 import { parseAllowedCurtainPosition } from "./curtain-position.mjs";
+import { parseCctvProfiles, resolveCctvProfile } from "./cctv-profiles.mjs";
 import { ruvexaHtml, ruvexaScript } from "./ruvexa-preview.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
@@ -26,6 +27,7 @@ const timeoutMs = 5000;
 const pairing = createLocalPairingAuthority();
 const customerSessions = createCustomerSessionAuthority();
 const fanStages = parseFanStageConfig(process.env.AMJ_FAN_SPEED_STAGES ?? "");
+const cctvProfiles = parseCctvProfiles(process.env.AMJ_CCTV_PROFILES ?? "");
 const cameraAllowlist = new Set((process.env.AMJ_ALLOWED_CAMERA_ENTITIES ?? "").split(",").map(x => x.trim()).filter(x => /^camera\.[a-z0-9_]+$/.test(x)));
 const curtainAllowlist = new Set((process.env.AMJ_ALLOWED_CURTAIN_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const relayAllowlist = new Set((process.env.AMJ_ALLOWED_RELAY_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
@@ -207,6 +209,34 @@ const server = createServer(async (req, res) => {
       if (typeof input.sessionId !== "string") { send(res, 400, { error: "Invalid session" }); return; }
       send(res, 200, { revoked: customerSessions.revoke(input.sessionId) });
     } catch { send(res, 400, { error: "Invalid request" }); }
+    return;
+  }
+  // Read-only CCTV capabilities. No media URL, password or NVR credential leaks.
+  if (req.method === "GET" && req.url?.startsWith("/v1/cameras/profile?")) {
+    const installer = authorized(req);
+    const sessionId = req.headers["x-amj-session-id"];
+    const auth = req.headers.authorization;
+    const sessionToken = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    const approved = installer ? null : customerSessions.approvedEntities({ sessionId, token: sessionToken });
+    if (!installer && !approved) { send(res, 401, { error: "Unauthorized" }); return; }
+    const params = new URL(req.url, "http://localhost").searchParams;
+    const id = params.get("entityId");
+    if (params.size !== 1 || !id || !/^camera\.[a-z0-9_]+$/.test(id) || !cameraAllowlist.has(id)) {
+      send(res, 404, { error: "Camera not found" }); return;
+    }
+    if (!installer && !approved.has(id)) { send(res, 403, { error: "Camera not granted" }); return; }
+    try {
+      const state = await haRequest(`/api/states/${id}`);
+      if (!state || state.entity_id !== id) { send(res, 404, { error: "Camera not found" }); return; }
+      const profile = resolveCctvProfile(id, cctvProfiles, {
+        snapshotAvailable: state.state !== "unknown" && state.state !== "unavailable",
+      });
+      if (!profile) { send(res, 200, { entityId: id, brand: "unconfigured", adapterStatus: "not_configured",
+        capabilities: { snapshot: state.state !== "unknown" && state.state !== "unavailable",
+          live: false, recordingSearch: false, recordingPlayback: false, ptz: false,
+          twoWayAudio: false, motionEvents: false, doorbellEvents: false } }); return; }
+      send(res, 200, profile);
+    } catch { send(res, 503, { error: "Camera profile unavailable" }); }
     return;
   }
   // Authenticated still-image proxy only. Never expose HA tokens or remote camera URLs.
