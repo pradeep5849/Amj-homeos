@@ -242,7 +242,7 @@ const server = createServer(async (req, res) => {
         signal: AbortSignal.timeout(timeoutMs), redirect: "error",
       });
       if (!response.ok) throw new Error("HA fan command failed");
-      send(res, 202, { accepted: true, entityId: command.entityId, requestedStage: command.stage });
+      send(res, 202, { accepted: true, entityId: command.entityId, ...(command.stage === undefined ? { requestedPercentage: command.percentage } : { requestedStage: command.stage }) });
     } catch {
       send(res, 503, { error: "Fan speed command unavailable" });
     }
