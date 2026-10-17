@@ -8,17 +8,23 @@ export function parseFanStageConfig(raw = "") {
     const [entityId, count, ...extra] = item.trim().split(":");
     if (extra.length || !FAN_ID.test(entityId) || !["4", "5"].includes(count) || result.has(entityId))
       throw new Error("Invalid fan stage configuration");
-    result.set(entityId, Number(count));
+    result.set(entityId, count === "percentage" ? "percentage" : Number(count));
   }
   return result;
 }
 export function parseAllowedFanSpeed(value, allowlist, stages) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  if (Object.keys(value).sort().join(",") !== "entityId,stage") return null;
+  const keys = Object.keys(value).sort().join(",");
+  if (keys !== "entityId,stage" && keys !== "entityId,percentage") return null;
   if (typeof value.entityId !== "string" || !FAN_ID.test(value.entityId) ||
       !allowlist.has(value.entityId)) return null;
   const count = stages.get(value.entityId);
-  if (![4, 5].includes(count) || !Number.isInteger(value.stage) ||
+  if (count === "percentage") {
+    if (keys !== "entityId,percentage" || !Number.isInteger(value.percentage) ||
+        value.percentage < 0 || value.percentage > 100) return null;
+    return { entityId: value.entityId, percentage: value.percentage };
+  }
+  if (keys !== "entityId,stage" || ![4, 5].includes(count) || !Number.isInteger(value.stage) ||
       value.stage < 1 || value.stage > count) return null;
   return { entityId: value.entityId, stage: value.stage,
     percentage: Math.round(value.stage * 100 / count) };
