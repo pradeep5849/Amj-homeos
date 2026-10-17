@@ -19,8 +19,8 @@ describe("Home Assistant discovery normalization", () => {
       isReadOnly: false, supportsPowerControl: true, isSensor: false,
       isSecurityDevice: false, isCurtain: false, source: "home_assistant",
     });
-    expect(entities[0]).toMatchObject({ isCurtain: true, isReadOnly: true, isOn: null });
-    expect(entities[2]).toMatchObject({ isSecurityDevice: true, isReadOnly: true });
+    expect(entities[1]).toMatchObject({ isCurtain: true, isReadOnly: true, isOn: null });
+    expect(entities[3]).toMatchObject({ isSecurityDevice: true, isReadOnly: true });
     expect(entities[1]).toMatchObject({
       deviceKey: "light.kitchen", category: "lighting", availabilityStatus: "online",
       unit: null, canToggle: true,
