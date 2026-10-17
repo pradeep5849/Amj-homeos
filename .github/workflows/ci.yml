@@ -84,6 +84,26 @@ jobs:
         run: echo "SESSION_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - run: npm run build
 
+
+  hostinger-production-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install production dependencies as a deployment smoke test
+        run: npm ci --omit=dev
+      - name: Verify Prisma CLI is installed without dev dependencies
+        run: |
+          test -x node_modules/.bin/prisma
+          node_modules/.bin/prisma --version
+      - name: Verify Next.js is installed
+        run: test -x node_modules/.bin/next
+
+
   hub-syntax:
     runs-on: ubuntu-latest
     timeout-minutes: 5
