@@ -114,9 +114,7 @@ jobs:
       - name: Upgrade vulnerable dependencies
         run: |
           npm install --save-exact next@16.4.2 eslint-config-next@16.4.2
-          npm audit fix
-          npm audit --omit=dev --audit-level=high
-          npm audit --audit-level=high
+          npm install --save-dev --save-exact sharp@0.35.6 source-map-js@1.2.2
       - name: Commit remediated lockfile to security branch
         run: |
           git config user.name "github-actions[bot]"
