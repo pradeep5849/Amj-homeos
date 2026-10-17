@@ -26,7 +26,7 @@ const timeoutMs = 5000;
 const pairing = createLocalPairingAuthority();
 const customerSessions = createCustomerSessionAuthority();
 const fanStages = parseFanStageConfig(process.env.AMJ_FAN_SPEED_STAGES ?? "");
-const cameraAllowlist = new Set((process.env.AMJ_ALLOWED_CAMERA_ENTITIES ?? "").split(",").map(x => x.trim()).filter(x => /^camera\\.[a-z0-9_]+$/.test(x)));
+const cameraAllowlist = new Set((process.env.AMJ_ALLOWED_CAMERA_ENTITIES ?? "").split(",").map(x => x.trim()).filter(x => /^camera\.[a-z0-9_]+$/.test(x)));
 const curtainAllowlist = new Set((process.env.AMJ_ALLOWED_CURTAIN_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const relayAllowlist = new Set((process.env.AMJ_ALLOWED_RELAY_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const entityIdPattern = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
