@@ -47,6 +47,8 @@ export function normalizeHaEntities(states) {
       isReadOnly: !POWER_DOMAINS.has(match[1]),
       deviceClass: SAFE_DEVICE_CLASSES.has(entry.attributes.device_class) ? entry.attributes.device_class : null,
       supportsPowerControl: POWER_DOMAINS.has(match[1]),
+      supportsFanSpeed: match[1] === "fan" && online && Number.isInteger(entry.attributes.supported_features) && (entry.attributes.supported_features & 1) !== 0,
+      fanSpeedPercentage: match[1] === "fan" && online && Number.isInteger(entry.attributes.percentage) && entry.attributes.percentage >= 0 && entry.attributes.percentage <= 100 ? entry.attributes.percentage : null,
       isSensor: match[1] === "sensor" || match[1] === "binary_sensor",
       isSecurityDevice: match[1] === "lock",
       isCurtain: match[1] === "cover",
