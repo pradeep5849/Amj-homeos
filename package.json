@@ -47,7 +47,7 @@
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "@vitest/coverage-v8": "4.1.0",
+    "@vitest/coverage-v8": "4.1.12",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.4.2",
     "playwright": "^1.62.1",
@@ -55,7 +55,7 @@
     "source-map-js": "1.2.2",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "vitest": "4.1.0"
+    "vitest": "4.1.12"
   },
   "allowScripts": {
     "@prisma/client@6.12.0": true,
