@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feature/ha01-hub-provisioning-foundation, security/dependency-audit-remediation]
+    branches: [main, feature/ha01-hub-provisioning-foundation]
   workflow_dispatch:
 
 permissions:
@@ -95,32 +95,3 @@ jobs:
           node --check deploy/local-hub/commands.mjs
           node --check deploy/local-hub/customer-sessions.mjs
 
-  security-remediation:
-    if: github.event_name == 'pull_request' && github.head_ref == 'security/dependency-audit-remediation'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          persist-credentials: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - name: Upgrade vulnerable dependencies
-        run: |
-          npm install --save-exact next@16.4.2 eslint-config-next@16.4.2
-          npm install --save-dev --save-exact sharp@latest source-map-js@latest
-      - name: Commit remediated lockfile to security branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit -m "fix(security): update vulnerable dependencies"
-            git push origin HEAD:security/dependency-audit-remediation
-          fi
