@@ -298,7 +298,7 @@ const server = createServer(async (req, res) => {
     const approved = installer ? null : customerSessions.approvedEntities({ sessionId, token: sessionToken });
     if (!installer && !approved) { send(res, 401, { error: "Unauthorized" }); return; }
     try {
-      const devices = normalizeHaEntities(await haRequest("/api/states"));
+      const devices = normalizeHaEntities(await haRequest("/api/states"), { fanStages });
       const visible = installer ? devices : devices.filter(device => approved.has(device.entityId));
       send(res, 200, buildInventorySnapshot(visible));
     } catch {
@@ -311,7 +311,7 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) { send(res, 401, { error: "Unauthorized" }); return; }
     try {
       const states = await haRequest("/api/states");
-      const devices = normalizeHaEntities(states);
+      const devices = normalizeHaEntities(states, { fanStages });
       send(res, 200, { devices, count: devices.length, readOnly: true });
     } catch {
       send(res, 503, { error: "Device discovery temporarily unavailable" });
