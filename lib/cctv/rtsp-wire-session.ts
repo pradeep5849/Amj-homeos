@@ -18,6 +18,8 @@ export class RtspWireSession {
   private session: string | null = null;
 
   get state() { return this.stage; }
+  /** Only available after the SETUP response has been validated. */
+  get negotiatedSessionId(): string | null { return this.stage === "PLAY" || this.stage === "STREAMING" ? this.session : null; }
 
   push(bytes: Uint8Array): RtspWireSessionEvent[] {
     if (this.stage === "CLOSED") throw new Error("RTSP session closed");
