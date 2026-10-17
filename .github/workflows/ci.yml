@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feature/ha01-hub-provisioning-foundation]
+    branches: [main, feature/ha01-hub-provisioning-foundation, security/dependency-audit-remediation]
   workflow_dispatch:
 
 permissions:
@@ -95,3 +95,30 @@ jobs:
           node --check deploy/local-hub/commands.mjs
           node --check deploy/local-hub/customer-sessions.mjs
 
+
+  dependency-lockfile-refresh:
+    if: github.ref == 'refs/heads/security/dependency-audit-remediation' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Update vulnerable dev dependencies without force or Next.js downgrade
+        run: |
+          npm install --save-dev --save-exact vitest@latest @vitest/coverage-v8@latest
+          npm update --save
+          npm audit --omit=dev --audit-level=high
+      - name: Commit refreshed dependency manifest and lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "fix(security): refresh patched development dependency graph"
+            git push origin HEAD:security/dependency-audit-remediation
+          fi
