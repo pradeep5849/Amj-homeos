@@ -29,11 +29,4 @@ export async function POST(request: Request, context: Context) {
     if (flags[capability] !== true || camera.connectionStatus !== "ONLINE") {
       throw new HttpError(409, "Camera capability is not available");
     }
-    // Metadata capabilities are user-declared, not verified by a gateway.\n    // Do not issue usable authorization until trusted gateway attestation exists.\n    throw new HttpError(501, "Verified CCTV media gateway is not configured");\n    /* Future trusted-relay path (disabled until verified gateway attestation):\n    const expiresAt = new Date(Date.now() + 60 * 1000);
-    const session = await prisma.cctvAccessSession.create({
-      data: { homeId, cameraId, userId: actor.id, purpose, expiresAt },
-      select: { id: true, expiresAt: true, purpose: true },
-    });
-    return Response.json({ authorization: session, streamAvailable: false }, {
-      status: 201, headers: { "Cache-Control": "no-store" },
-    });\n    */\n  } catch (error) { return errorResponse(error); }\n}
+    // Metadata capabilities are user-declared, not verified by a gateway.\n    // Do not issue usable authorization until trusted gateway attestation exists.\n    throw new HttpError(501, "Verified CCTV media gateway is not configured");\nn  } catch (error) { return errorResponse(error); }\n}
