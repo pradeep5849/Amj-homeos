@@ -18,7 +18,7 @@ button:disabled{opacity:.55;cursor:default}.row{display:flex;gap:12px;flex-wrap:
 <p id="message" role="status" aria-live="polite"></p></section>
 <section class="card"><div class="row"><h2>My devices</h2><button id="refresh" type="button" disabled>Refresh</button></div>
 <p id="summary">Not connected</p><div id="devices"></div></section>
-<small>Read-only preview. No controls or passwords are saved in this browser.</small>
+<small>Only installer-approved lights and switches can be toggled. Commands require a valid customer session. Credentials are not saved in this browser.</small>
 <script src="/ruvexa-preview.js" defer></script></main></body></html>`;
 
 export const ruvexaScript = `(() => {
@@ -38,8 +38,44 @@ export const ruvexaScript = `(() => {
     clearDevices();
     message("Disconnected.");
   }
+  async function setPower(device, power, button) {
+    if (!credentials || button.disabled) return;
+    const session = credentials;
+    button.disabled = true;
+    message("Sending command…");
+    try {
+      const response = await fetch("/v1/devices/relay", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + session.token,
+          "X-AMJ-Session-ID": session.sessionId,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ entityId: device.id, power }),
+        cache: "no-store"
+      });
+      if (credentials !== session) return;
+      if (response.status === 401) {
+        disconnect();
+        message("Session expired. Request a new session from your installer.");
+        return;
+      }
+      if (!response.ok) {
+        message(response.status === 403 ? "Device control not approved." :
+          response.status === 409 ? "Device unavailable." : "Command failed. Try again.");
+        return;
+      }
+      message("Command accepted. Checking device state…");
+      await refresh();
+    } catch {
+      if (credentials === session) message("Unable to reach the gateway. Device state is unconfirmed.");
+    } finally {
+      button.disabled = false;
+    }
+  }
   async function refresh() {
     if (!credentials) return;
+    const session = credentials;
     el("refresh").disabled = true;
     message("Loading your devices…");
     try {
@@ -54,6 +90,7 @@ export const ruvexaScript = `(() => {
       }
       if (!response.ok) throw new Error("Gateway unavailable");
       const inventory = await response.json();
+      if (credentials !== session) return;
       if (!inventory || !Array.isArray(inventory.devices) || inventory.devices.length > 1000)
         throw new Error("Invalid inventory");
       clearDevices();
@@ -71,12 +108,26 @@ export const ruvexaScript = `(() => {
         state.className = "badge";
         state.textContent = String(device.state || "unknown") + (device.unit || "");
         card.append(heading, category, state);
+        // The gateway remains authoritative: only scoped, approved light/switch
+        // commands can succeed. No lock, cover, fan or gate controls here.
+        if (device.canToggle === true && device.availability === "online" &&
+            (device.category === "lighting" || device.category === "switches") &&
+            (device.state === "on" || device.state === "off")) {
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.textContent = device.state === "on" ? "Turn off" : "Turn on";
+          toggle.setAttribute("aria-label", toggle.textContent + " " + (device.name || device.id));
+          toggle.addEventListener("click", () => setPower(device, device.state !== "on", toggle));
+          card.append(toggle);
+        }
         el("devices").append(card);
       }
       message("Device list updated.");
     } catch {
-      clearDevices();
-      message("Unable to load devices. Check your gateway connection.");
+      if (credentials === session) {
+        clearDevices();
+        message("Unable to load devices. Check your gateway connection.");
+      }
     } finally {
       el("refresh").disabled = !credentials;
     }
