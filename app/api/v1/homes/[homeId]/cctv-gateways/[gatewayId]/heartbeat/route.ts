@@ -30,18 +30,24 @@ export async function POST(request: Request, context: Context) {
     });
     if (!valid) throw new HttpError(401, "Invalid gateway signature");
     try {
-      await prisma.cctvGatewayRequestNonce.create({ data: { gatewayId, homeId, nonce } });
+      await prisma.$transaction(async tx => {
+        await tx.cctvGatewayRequestNonce.create({ data: { gatewayId, homeId, nonce } });
+        const result = await tx.gateway.updateMany({
+          where: {
+            id: gatewayId, homeId, gatewayType: "CCTV",
+            cctvStatus: "ACTIVE", isArchived: false,
+            home: { isArchived: false },
+          },
+          data: { isOnline: true, lastSeenAt: new Date() },
+        });
+        if (result.count !== 1) throw new HttpError(401, "Gateway no longer authorized");
+      });
     } catch (error) {
       if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
         throw new HttpError(409, "Gateway request replayed");
       }
       throw error;
     }
-    const result = await prisma.gateway.updateMany({
-      where: { id: gatewayId, homeId, gatewayType: "CCTV", cctvStatus: "ACTIVE", isArchived: false },
-      data: { isOnline: true, lastSeenAt: new Date() },
-    });
-    if (!result.count) throw new HttpError(401, "Gateway no longer authorized");
     return Response.json({ accepted: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return errorResponse(error); }
 }
