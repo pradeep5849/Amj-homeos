@@ -2,7 +2,7 @@
 // Device pairing and physical Zigbee coordinator integration are not included.
 const SUPPORTED_DOMAINS = new Set([
   "light", "switch", "fan", "sensor", "binary_sensor",
-  "cover", "lock",
+  "cover", "lock", "camera",
 ]);
 const ENTITY_ID = /^([a-z][a-z0-9_]*)\.([a-z0-9_]+)$/;
 const MAX_ENTITIES = 1000;
@@ -12,7 +12,7 @@ const POWER_DOMAINS = new Set(["light", "switch", "fan"]);
 const isPlainText = (value) => typeof value === "string" && !/[\x00-\x1f\x7f]/.test(value);
 const safeName = (value, fallback) => isPlainText(value) && value.trim() ? value.trim().slice(0, MAX_NAME_LENGTH) : fallback;
 const UNITS = new Set(["°C", "°F", "%", "W", "kW", "kWh", "V", "A", "lx", "ppm", "Pa", "hPa"]);
-const CATEGORIES = { light: "lighting", switch: "switches", fan: "fans", sensor: "sensors", binary_sensor: "sensors", cover: "curtains", lock: "security" };
+const CATEGORIES = { light: "lighting", switch: "switches", fan: "fans", sensor: "sensors", binary_sensor: "sensors", cover: "curtains", lock: "security", camera: "cameras" };
 
 export function normalizeHaEntities(states, { fanStages = new Map() } = {}) {
   if (!Array.isArray(states)) throw new Error("Invalid Home Assistant states");
@@ -55,6 +55,9 @@ export function normalizeHaEntities(states, { fanStages = new Map() } = {}) {
       isSensor: match[1] === "sensor" || match[1] === "binary_sensor",
       isSecurityDevice: match[1] === "lock",
       isCurtain: match[1] === "cover",
+      isCamera: match[1] === "camera",
+      curtainPositionSupported: match[1] === "cover" && online && Number.isInteger(entry.attributes.supported_features) && (entry.attributes.supported_features & 4) !== 0,
+      curtainPosition: match[1] === "cover" && Number.isInteger(entry.attributes.current_position) && entry.attributes.current_position >= 0 && entry.attributes.current_position <= 100 ? entry.attributes.current_position : null,
       curtainActions: match[1] === "cover" && online && Number.isInteger(entry.attributes.supported_features) ? {
         open: (entry.attributes.supported_features & 1) !== 0,
         close: (entry.attributes.supported_features & 2) !== 0,

@@ -11,22 +11,22 @@ describe("Home Assistant discovery normalization", () => {
       { entity_id: "person.owner", state: "home", attributes: {} },
     ]);
     expect(entities.map(x => x.entityId)).toEqual([
-      "cover.living_curtain", "light.kitchen", "lock.front_door",
+      "camera.front", "cover.living_curtain", "light.kitchen", "lock.front_door",
     ]);
-    expect(entities[1].name).toBe("Kitchen Light");
-    expect(entities[1]).toMatchObject({
+    expect(entities[2].name).toBe("Kitchen Light");
+    expect(entities[2]).toMatchObject({
       displayName: "Kitchen Light", isOnline: true, isOn: true,
       isReadOnly: false, supportsPowerControl: true, isSensor: false,
       isSecurityDevice: false, isCurtain: false, source: "home_assistant",
     });
-    expect(entities[0]).toMatchObject({ isCurtain: true, isReadOnly: true, isOn: null });
-    expect(entities[2]).toMatchObject({ isSecurityDevice: true, isReadOnly: true });
-    expect(entities[1]).toMatchObject({
+    expect(entities[1]).toMatchObject({ isCurtain: true, isReadOnly: true, isOn: null });
+    expect(entities[3]).toMatchObject({ isSecurityDevice: true, isReadOnly: true });
+    expect(entities[2]).toMatchObject({
       deviceKey: "light.kitchen", category: "lighting", availabilityStatus: "online",
       unit: null, canToggle: true,
     });
-    expect(entities[0]).toMatchObject({ category: "curtains", canToggle: false });
-    expect(entities[2]).toMatchObject({ category: "security", canToggle: false });
+    expect(entities[1]).toMatchObject({ category: "curtains", canToggle: false });
+    expect(entities[3]).toMatchObject({ category: "security", canToggle: false });
   });
   it("deduplicates, skips malformed records and identifies unavailable devices", () => {
     const entities = normalizeHaEntities([

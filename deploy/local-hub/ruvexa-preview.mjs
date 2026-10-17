@@ -27,6 +27,9 @@ export const ruvexaScript = `(() => {
   let credentials = null;
   const message = text => { el("message").textContent = text; };
   function clearDevices() {
+    for (const img of el("devices").querySelectorAll("img[data-object-url]")) {
+      URL.revokeObjectURL(img.dataset.objectUrl);
+    }
     el("devices").replaceChildren();
     el("summary").textContent = "Not connected";
   }
@@ -72,6 +75,57 @@ export const ruvexaScript = `(() => {
     } finally {
       button.disabled = false;
     }
+  }
+  async function setCurtainPosition(device, position, button) {
+    if (!credentials || button.disabled) return;
+    const session = credentials;
+    button.disabled = true;
+    message("Setting curtain position…");
+    try {
+      const response = await fetch("/v1/devices/curtain-position", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.token,
+          "X-AMJ-Session-ID": session.sessionId, "Content-Type": "application/json" },
+        body: JSON.stringify({ entityId: device.id, position }), cache: "no-store"
+      });
+      if (credentials !== session) return;
+      if (response.status === 401) {
+        disconnect(); message("Session expired. Ask your installer for a new session.");
+      } else if (!response.ok) {
+        message(response.status === 403 ? "Curtain not approved." :
+          response.status === 409 ? "Position unavailable." : "Curtain command failed.");
+      } else { message("Position requested. Refreshing…"); await refresh(); }
+    } catch { if (credentials === session) message("Curtain position unconfirmed."); }
+    finally { button.disabled = false; }
+  }
+  async function loadCameraSnapshot(device, button, picture) {
+    if (!credentials || button.disabled) return;
+    const session = credentials;
+    button.disabled = true;
+    message("Loading camera still image…");
+    try {
+      const response = await fetch("/v1/cameras/snapshot?entityId=" + encodeURIComponent(device.id), {
+        headers: { Authorization: "Bearer " + session.token, "X-AMJ-Session-ID": session.sessionId },
+        cache: "no-store"
+      });
+      if (credentials !== session) return;
+      if (response.status === 401) {
+        disconnect(); message("Session expired. Ask your installer for a new session."); return;
+      }
+      if (!response.ok) throw new Error("Snapshot unavailable");
+      const type = response.headers.get("content-type")?.split(";")[0];
+      if (type !== "image/jpeg" && type !== "image/png") throw new Error("Unsupported image");
+      const blob = await response.blob();
+      if (credentials !== session) return;
+      if (blob.size > 2000000) throw new Error("Image too large");
+      if (picture.dataset.objectUrl) URL.revokeObjectURL(picture.dataset.objectUrl);
+      const url = URL.createObjectURL(blob);
+      picture.dataset.objectUrl = url;
+      picture.src = url;
+      picture.hidden = false;
+      message("Camera still image loaded. This is not a live video stream.");
+    } catch { if (credentials === session) message("Camera still image unavailable."); }
+    finally { button.disabled = false; }
   }
   async function controlCurtain(device, action, button) {
     if (!credentials || button.disabled) return;
@@ -140,6 +194,7 @@ export const ruvexaScript = `(() => {
         cache: "no-store"
       });
       if (response.status === 401) {
+        if (credentials !== session) return;
         disconnect();
         message("Session expired or invalid. Ask your installer for a new session.");
         return;
@@ -222,6 +277,31 @@ export const ruvexaScript = `(() => {
             controls.append(button);
           }
           card.append(controls);
+        }
+        if (device.category === "curtains" && device.availability === "online" &&
+            device.curtainPositionSupported === true) {
+          const label = document.createElement("label");
+          label.textContent = "Curtain opening";
+          const slider = document.createElement("input");
+          slider.type = "range"; slider.min = "0"; slider.max = "100"; slider.step = "1";
+          slider.value = String(device.curtainPosition ?? 0);
+          const reading = document.createElement("span");
+          reading.textContent = slider.value + "% open";
+          slider.addEventListener("input", () => { reading.textContent = slider.value + "% open"; });
+          const apply = document.createElement("button");
+          apply.type = "button"; apply.textContent = "Set position";
+          apply.addEventListener("click", () => setCurtainPosition(device, Number(slider.value), apply));
+          label.append(slider, reading);
+          card.append(label, apply);
+        }
+        if (device.category === "cameras" && device.availability === "online") {
+          const button = document.createElement("button");
+          button.type = "button"; button.textContent = "View still image";
+          const picture = document.createElement("img");
+          picture.hidden = true; picture.alt = "Camera still image";
+          picture.style.cssText = "width:100%;height:auto;margin-top:12px;border-radius:8px";
+          button.addEventListener("click", () => loadCameraSnapshot(device, button, picture));
+          card.append(button, picture);
         }
         el("devices").append(card);
       }
