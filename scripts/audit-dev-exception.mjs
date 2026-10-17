@@ -44,7 +44,9 @@ for (const [name, finding] of Object.entries(vulnerabilities)) {
     return source.url === 'https://github.com/advisories/' + advisory
       && source.name === 'braces';
   });
-  if (allowedPackages.has(name) && finding.isDirect !== true
+  // eslint-config-next is a direct devDependency; the other entries are transitive.
+  const expectedDirect = name === 'eslint-config-next';
+  if (allowedPackages.has(name) && finding.isDirect === expectedDirect
       && lock.packages?.['node_modules/' + name]?.dev === true && onlyAllowedSources) {
     exceptions++;
     console.warn('Temporary dev-only exception:', name, advisory);
