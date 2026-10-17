@@ -6,7 +6,7 @@ import { z } from "zod";
  */
 export const gatewayCameraReportSchema = z.object({
   cameraId: z.uuid(),
-  connectionStatus: z.enum(["ONLINE", "OFFLINE", "ERROR"]),
+  connectionStatus: z.enum(["ONLINE", "OFFLINE"]),
   capabilities: z.object({
     live: z.boolean(),
     recordings: z.boolean(),
