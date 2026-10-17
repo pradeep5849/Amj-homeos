@@ -52,12 +52,16 @@ export async function connectRtspSession(input: {
         const prior = gate.state;
         const received = gate.push(chunk);
         events.push(...received);
+        if (received.some(event => event.type === "rtp") && gate.state === "STREAMING") {
+          finish();
+          return;
+        }
         if (prior === "DESCRIBE" && gate.state === "SETUP") {
           send("SETUP", controlUri, 2, "Transport: RTP/AVP/TCP;unicast;interleaved=0-1\r\n");
         } else if (prior === "SETUP" && gate.state === "PLAY") {
-          // Session ID is not exposed by RtspWireSession; do not issue an
-          // invalid PLAY request. Fail closed until the transport API provides it.
-          finish(new Error("RTSP PLAY requires verified session identifier"));
+          const sessionId = gate.negotiatedSessionId;
+          if (!sessionId) throw new Error("RTSP SETUP session ID missing");
+          send("PLAY", streamUri, 3, "Session: " + sessionId + "\r\nRange: npt=0.000-\r\n");
         }
       } catch (error) { finish(error instanceof Error ? error : new Error("RTSP session failed")); }
     });
