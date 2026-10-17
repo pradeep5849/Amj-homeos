@@ -542,6 +542,26 @@ model CctvGatewayRequestNonce {
   @@index([createdAt])
 }
 
+enum CctvSessionPurpose {
+  LIVE
+  RECORDINGS
+  PTZ
+}
+
+model CctvAccessSession {
+  id        String             @id @default(uuid()) @db.Uuid
+  homeId    String             @db.Uuid
+  cameraId  String             @db.Uuid
+  userId    String             @db.Uuid
+  purpose   CctvSessionPurpose
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime           @default(now())
+
+  @@index([homeId, userId, expiresAt])
+  @@index([cameraId, expiresAt])
+}
+
 model DeviceOnboardingSession {
   id                   String                @id @default(uuid()) @db.Uuid
   homeId               String                @db.Uuid
