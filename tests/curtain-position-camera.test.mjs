@@ -29,7 +29,7 @@ describe("curtain position and CCTV metadata", () => {
     ]);
     const inventory = buildInventorySnapshot(devices);
     expect(inventory.summary.cameras).toBe(1);
-    expect(inventory.devices.find(x => x.id === "camera.driveway")).toMatchObject({ category: "cameras", readOnly: true });
+    expect(inventory.devices.find(x => x.id === "camera.driveway")).toMatchObject({ category: "cameras", readOnly: true, cameraCapabilities: { snapshot: true, live: false, recordingPlayback: false, ptz: false, twoWayAudio: false } });
     expect(inventory.devices.find(x => x.id === "cover.bedroom")).toMatchObject({ curtainPositionSupported: true, curtainPosition: 73 });
     expect(inventory.devices.find(x => x.id === "cover.simple").curtainPositionSupported).toBe(false);
     expect(JSON.stringify(inventory)).not.toContain("secret");
