@@ -19,6 +19,36 @@ enum HomeMembershipRole {
   MEMBER
 }
 
+enum CameraSourceKind {
+  IP_CAMERA
+  NVR_CHANNEL
+  DVR_CHANNEL
+}
+
+enum CameraConnectionMethod {
+  ONVIF_RTSP
+  RTSP
+  VENDOR_API
+  UNSUPPORTED
+}
+
+enum CameraConnectionStatus {
+  UNKNOWN
+  ONLINE
+  OFFLINE
+}
+
+enum CameraBrand {
+  HIKVISION
+  CP_PLUS
+  DAHUA
+  TAPO
+  EZVIZ
+  REOLINK
+  GENERIC_ONVIF
+  OTHER
+}
+
 enum DeviceProtocol {
   WIFI
   ZIGBEE
@@ -290,6 +320,8 @@ model Home {
   updatedAt            DateTime                  @updatedAt
   memberships          HomeMembership[]
   rooms                Room[]
+  cameras              Camera[]
+  cameraRecorders      CameraRecorder[]
   devices              Device[]
   haEntityBindings     HomeAssistantEntityBinding[]
   gateways             Gateway[]
@@ -405,6 +437,7 @@ model Room {
   updatedAt      DateTime @updatedAt
   home           Home     @relation(fields: [homeId], references: [id], onDelete: Restrict)
   devices        Device[]
+  cameras        Camera[]
 
   @@unique([homeId, normalizedName])
   @@index([homeId])
@@ -950,4 +983,52 @@ model HomeAssistantEntityBinding {
 
   @@unique([instanceId, entityId])
   @@index([homeId, instanceId])
+}
+
+/**
+ * CCTV-02 registry. Connection credentials are never stored here.
+ * secretRef is an opaque identifier resolved by a separate encrypted vault.
+ * A camera can be standalone or a recorder channel.
+ */
+model CameraRecorder {
+  id          String   @id @default(uuid()) @db.Uuid
+  homeId      String   @db.Uuid
+  name        String
+  brand       CameraBrand
+  model       String?
+  secretRef   String?
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  home        Home     @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  cameras     Camera[]
+
+  @@unique([id, homeId])
+  @@index([homeId, isArchived])
+}
+
+model Camera {
+  id               String                 @id @default(uuid()) @db.Uuid
+  homeId           String                 @db.Uuid
+  roomId           String?                @db.Uuid
+  recorderId       String?                @db.Uuid
+  recorderChannel  Int?
+  name             String
+  brand            CameraBrand
+  model            String?
+  sourceKind       CameraSourceKind
+  connectionMethod CameraConnectionMethod @default(UNSUPPORTED)
+  connectionStatus CameraConnectionStatus @default(UNKNOWN)
+  capabilities     Json
+  secretRef        String?
+  isArchived       Boolean                @default(false)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  home             Home                   @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  room             Room?                  @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  recorder         CameraRecorder?        @relation(fields: [recorderId, homeId], references: [id, homeId], onDelete: Restrict)
+
+  @@unique([recorderId, recorderChannel])
+  @@index([homeId, isArchived])
+  @@index([roomId, isArchived])
 }
