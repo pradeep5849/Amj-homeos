@@ -1,3 +1,4 @@
+import { buildCameraCapabilities } from "./cctv-capabilities.mjs";
 // Convert authorized Home Assistant discovery into a stable, UI-ready inventory snapshot.
 // Never return raw HA attributes or authorize controls based on UI capability hints.
 export function buildInventorySnapshot(devices, { generatedAt = new Date().toISOString() } = {}) {
@@ -34,6 +35,7 @@ export function buildInventorySnapshot(devices, { generatedAt = new Date().toISO
       curtainActions: device.category === "curtains" ? device.curtainActions ?? null : null,
       curtainPositionSupported: device.category === "curtains" && device.curtainPositionSupported === true,
       curtainPosition: device.category === "curtains" ? device.curtainPosition ?? null : null,
+      cameraCapabilities: device.category === "cameras" ? buildCameraCapabilities({ snapshot: device.availabilityStatus === "online" }) : null,
     };
   });
   return { generatedAt, count: items.length, summary, devices: items, readOnly: true };
