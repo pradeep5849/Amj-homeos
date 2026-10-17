@@ -4,9 +4,9 @@ export function buildInventorySnapshot(devices, { generatedAt = new Date().toISO
   if (!Array.isArray(devices) || devices.length > 1000) throw new Error("Invalid inventory");
   const summary = {
     total: devices.length, online: 0, offline: 0, unknown: 0,
-    lighting: 0, switches: 0, fans: 0, sensors: 0, curtains: 0, security: 0,
+    lighting: 0, switches: 0, fans: 0, sensors: 0, curtains: 0, security: 0, cameras: 0,
   };
-  const allowed = new Set(["lighting", "switches", "fans", "sensors", "curtains", "security"]);
+  const allowed = new Set(["lighting", "switches", "fans", "sensors", "curtains", "security", "cameras"]);
   const items = devices.map((device) => {
     if (!device || typeof device.entityId !== "string" ||
         !allowed.has(device.category) ||
@@ -32,6 +32,8 @@ export function buildInventorySnapshot(devices, { generatedAt = new Date().toISO
       fanSpeedMode: device.fanSpeedMode ?? null,
       fanSpeedStage: device.fanSpeedStage ?? null,
       curtainActions: device.category === "curtains" ? device.curtainActions ?? null : null,
+      curtainPositionSupported: device.category === "curtains" && device.curtainPositionSupported === true,
+      curtainPosition: device.category === "curtains" ? device.curtainPosition ?? null : null,
     };
   });
   return { generatedAt, count: items.length, summary, devices: items, readOnly: true };
