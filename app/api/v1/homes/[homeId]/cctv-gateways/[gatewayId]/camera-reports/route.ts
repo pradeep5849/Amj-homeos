@@ -38,14 +38,21 @@ export async function POST(request: Request, context: Context) {
     });
     if (!camera) throw new HttpError(404, "Camera not found");
 
-    await prisma.$transaction(async tx => {
+    try {
+      await prisma.$transaction(async tx => {
       await tx.cctvGatewayRequestNonce.create({ data: { homeId, gatewayId, nonce } });
       const updated = await tx.camera.updateMany({
         where: { id: report.cameraId, homeId, isArchived: false },
         data: { connectionStatus: report.connectionStatus, capabilities: report.capabilities },
       });
       if (updated.count !== 1) throw new HttpError(409, "Camera state changed");
-    });
+      });
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+        throw new HttpError(409, "Gateway request replayed");
+      }
+      throw error;
+    }
     return Response.json({ accepted: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return errorResponse(error); }
 }
