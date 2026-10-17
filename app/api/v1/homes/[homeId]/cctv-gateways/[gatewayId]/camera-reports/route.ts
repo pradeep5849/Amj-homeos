@@ -42,7 +42,7 @@ export async function POST(request: Request, context: Context) {
       await prisma.$transaction(async tx => {
       await tx.cctvGatewayRequestNonce.create({ data: { homeId, gatewayId, nonce } });
       const updated = await tx.camera.updateMany({
-        where: { id: report.cameraId, homeId, isArchived: false },
+        where: { id: report.cameraId, homeId, cctvGatewayId: gatewayId, isArchived: false },
         data: { connectionStatus: report.connectionStatus, capabilities: report.capabilities },
       });
       if (updated.count !== 1) throw new HttpError(409, "Camera state changed");
