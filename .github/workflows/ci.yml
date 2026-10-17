@@ -96,7 +96,7 @@ jobs:
           node --check deploy/local-hub/customer-sessions.mjs
 
   security-remediation:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/security/dependency-audit-remediation'
+    if: github.event_name == 'pull_request' && github.head_ref == 'security/dependency-audit-remediation'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -104,6 +104,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: true
       - uses: actions/setup-node@v4
         with:
