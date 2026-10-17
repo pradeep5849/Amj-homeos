@@ -104,6 +104,40 @@ export const ruvexaScript = `(() => {
     } catch { if (credentials === session) message("Curtain position unconfirmed."); }
     finally { button.disabled = false; }
   }
+  async function loadCameraProfile(device, button, output) {
+    if (!credentials || button.disabled) return;
+    const session = credentials;
+    button.disabled = true;
+    try {
+      const response = await fetch("/v1/cameras/profile?entityId=" + encodeURIComponent(device.id), {
+        headers: { Authorization: "Bearer " + session.token, "X-AMJ-Session-ID": session.sessionId },
+        cache: "no-store"
+      });
+      if (credentials !== session || !output.isConnected) return;
+      if (response.status === 401) {
+        disconnect(); message("Session expired. Ask your installer for a new session."); return;
+      }
+      if (!response.ok) throw new Error("Camera profile unavailable");
+      const profile = await response.json();
+      if (credentials !== session || !output.isConnected) return;
+      const brands = { hikvision: "Hikvision", cp_plus: "CP Plus", dahua: "Dahua" };
+      const brand = brands[profile.brand] ?? "Not configured";
+      const capabilities = profile.capabilities ?? {};
+      const names = { snapshot: "Still images", live: "Live video", recordingSearch: "Recording search",
+        recordingPlayback: "Recording playback", ptz: "PTZ", twoWayAudio: "Two-way audio",
+        motionEvents: "Motion events", doorbellEvents: "Doorbell events" };
+      output.replaceChildren();
+      const title = document.createElement("strong");
+      title.textContent = "Brand: " + brand;
+      output.append(title);
+      for (const [key, label] of Object.entries(names)) {
+        const line = document.createElement("div");
+        line.textContent = label + ": " + (capabilities[key] === true ? "Available" : "Not available");
+        output.append(line);
+      }
+    } catch { if (credentials === session) message("Unable to load camera capabilities."); }
+    finally { button.disabled = false; }
+  }
   async function loadCameraSnapshot(device, button, picture, quiet = false) {
     if (!credentials || button.disabled || document.hidden || !picture.isConnected) return;
     const session = credentials;
@@ -328,7 +362,13 @@ export const ruvexaScript = `(() => {
             }, 5000);
             cameraRefreshTimers.add(timer);
           });
-          card.append(button, auto, picture);
+          const profileButton = document.createElement("button");
+          profileButton.type = "button";
+          profileButton.textContent = "Camera capabilities";
+          const profileDetails = document.createElement("div");
+          profileDetails.setAttribute("aria-live", "polite");
+          profileButton.addEventListener("click", () => loadCameraProfile(device, profileButton, profileDetails));
+          card.append(button, auto, profileButton, profileDetails, picture);
         }
         el("devices").append(card);
       }
