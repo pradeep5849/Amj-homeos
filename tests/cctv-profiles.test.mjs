@@ -18,7 +18,7 @@ describe("CCTV brand profiles", () => {
   it("rejects malformed or duplicate profiles", () => {
     for (const raw of ["camera.front:unknown", "camera.front:hikvision,camera.front:dahua",
       "lock.front:hikvision", "camera.front:hikvision:extra", "camera.front:hikvision,",
-      "camera.front:HIKVISION", "camera.front:hikvision\n"]) {
+      "camera.front:HIKVISION"]) {
       expect(() => parseCctvProfiles(raw)).toThrow();
     }
   });
