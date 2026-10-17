@@ -122,7 +122,7 @@ export const ruvexaScript = `(() => {
       const type = response.headers.get("content-type")?.split(";")[0];
       if (type !== "image/jpeg" && type !== "image/png") throw new Error("Unsupported image");
       const blob = await response.blob();
-      if (credentials !== session) return;
+      if (credentials !== session || !picture.isConnected) return;
       if (blob.size > 2000000) throw new Error("Image too large");
       if (picture.dataset.objectUrl) URL.revokeObjectURL(picture.dataset.objectUrl);
       const url = URL.createObjectURL(blob);
