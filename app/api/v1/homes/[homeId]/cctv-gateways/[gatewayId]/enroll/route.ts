@@ -40,7 +40,8 @@ export async function POST(request: Request, context: Context) {
         where: { id: gatewayId, homeId, gatewayType: "CCTV", cctvStatus: "PENDING", isArchived: false },
         data: { cctvStatus: "ACTIVE", cctvPublicKey: input.publicKey, cctvPairedAt: pairedAt },
       });
-      return activated.count === 1;
+      if (activated.count !== 1) throw new HttpError(409, "Gateway state changed during pairing");
+      return true;
     });
     if (!paired) throw new HttpError(409, "Pairing challenge unavailable or expired");
     return Response.json({ paired: true }, { headers: { "Cache-Control": "no-store" } });
