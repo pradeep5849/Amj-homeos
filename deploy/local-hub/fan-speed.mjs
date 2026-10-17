@@ -6,7 +6,7 @@ export function parseFanStageConfig(raw = "") {
   if (!raw.trim()) return result;
   for (const item of raw.split(",")) {
     const [entityId, count, ...extra] = item.trim().split(":");
-    if (extra.length || !FAN_ID.test(entityId) || !["4", "5"].includes(count) || result.has(entityId))
+    if (extra.length || !FAN_ID.test(entityId) || !["4", "5", "percentage"].includes(count) || result.has(entityId))
       throw new Error("Invalid fan stage configuration");
     result.set(entityId, count === "percentage" ? "percentage" : Number(count));
   }
