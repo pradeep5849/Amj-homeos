@@ -4,6 +4,8 @@ CREATE TYPE "CameraConnectionMethod" AS ENUM ('ONVIF_RTSP','RTSP','VENDOR_API','
 CREATE TYPE "CameraConnectionStatus" AS ENUM ('UNKNOWN','ONLINE','OFFLINE');
 CREATE TYPE "CameraBrand" AS ENUM ('HIKVISION','CP_PLUS','DAHUA','TAPO','EZVIZ','REOLINK','GENERIC_ONVIF','OTHER');
 
+CREATE UNIQUE INDEX "Room_id_homeId_key" ON "Room"("id","homeId");
+
 CREATE TABLE "CameraRecorder" (
   "id" UUID NOT NULL,
   "homeId" UUID NOT NULL,
@@ -48,5 +50,5 @@ CREATE UNIQUE INDEX "Camera_recorderId_recorderChannel_key" ON "Camera"("recorde
 CREATE INDEX "Camera_homeId_isArchived_idx" ON "Camera"("homeId","isArchived");
 CREATE INDEX "Camera_roomId_isArchived_idx" ON "Camera"("roomId","isArchived");
 ALTER TABLE "Camera" ADD CONSTRAINT "Camera_homeId_fkey" FOREIGN KEY ("homeId") REFERENCES "Home"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "Camera" ADD CONSTRAINT "Camera_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Camera" ADD CONSTRAINT "Camera_roomId_fkey" FOREIGN KEY ("roomId","homeId") REFERENCES "Room"("id","homeId") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "Camera" ADD CONSTRAINT "Camera_recorderId_homeId_fkey" FOREIGN KEY ("recorderId","homeId") REFERENCES "CameraRecorder"("id","homeId") ON DELETE RESTRICT ON UPDATE CASCADE;
