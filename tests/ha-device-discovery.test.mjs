@@ -11,10 +11,10 @@ describe("Home Assistant discovery normalization", () => {
       { entity_id: "person.owner", state: "home", attributes: {} },
     ]);
     expect(entities.map(x => x.entityId)).toEqual([
-      "cover.living_curtain", "light.kitchen", "lock.front_door",
+      "camera.front", "cover.living_curtain", "light.kitchen", "lock.front_door",
     ]);
-    expect(entities[1].name).toBe("Kitchen Light");
-    expect(entities[1]).toMatchObject({
+    expect(entities[2].name).toBe("Kitchen Light");
+    expect(entities[2]).toMatchObject({
       displayName: "Kitchen Light", isOnline: true, isOn: true,
       isReadOnly: false, supportsPowerControl: true, isSensor: false,
       isSecurityDevice: false, isCurtain: false, source: "home_assistant",
