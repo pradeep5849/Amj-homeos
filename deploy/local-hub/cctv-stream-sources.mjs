@@ -17,6 +17,9 @@ export function parseCctvStreamSource(input) {
       typeof input.entityId !== "string" || !CAMERA.test(input.entityId) ||
       !BRANDS.has(input.brand) || typeof input.rtspUrl !== "string" ||
       input.rtspUrl.length > 2048) return null;
+  // URL() normalizes dot segments; reject traversal in the original input first.
+  if (/(?:^|\\/)\\.{1,2}(?:\\/|$)/.test(input.rtspUrl.slice(input.rtspUrl.indexOf("://") + 3)) ||
+      /%2e/i.test(input.rtspUrl) || /%2f/i.test(input.rtspUrl) || /%5c/i.test(input.rtspUrl)) return null;
   let url;
   try { url = new URL(input.rtspUrl); } catch { return null; }
   if (url.protocol !== "rtsp:" || !privateIPv4(url.hostname) ||
