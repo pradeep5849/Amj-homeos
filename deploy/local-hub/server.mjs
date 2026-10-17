@@ -255,11 +255,19 @@ const server = createServer(async (req, res) => {
         }
       } finally { reader.releaseLock(); }
       if (total === 0) { send(res, 502, { error: "Empty snapshot" }); return; }
+      const image = Buffer.concat(chunks);
+      const jpeg = image.length >= 4 && image[0] === 0xff && image[1] === 0xd8 &&
+        image[image.length - 2] === 0xff && image[image.length - 1] === 0xd9;
+      const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+      const png = image.length >= 24 && pngSignature.every((byte, index) => image[index] === byte);
+      if ((mime === "image/jpeg" && !jpeg) || (mime === "image/png" && !png)) {
+        send(res, 502, { error: "Invalid snapshot image" }); return;
+      }
       res.writeHead(200, {
         "Content-Type": mime, "Cache-Control": "no-store, private",
         "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'",
       });
-      res.end(Buffer.concat(chunks));
+      res.end(image);
     } catch { send(res, 503, { error: "Camera snapshot unavailable" }); }
     return;
   }
