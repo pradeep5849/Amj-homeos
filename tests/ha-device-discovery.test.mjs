@@ -21,12 +21,12 @@ describe("Home Assistant discovery normalization", () => {
     });
     expect(entities[1]).toMatchObject({ isCurtain: true, isReadOnly: true, isOn: null });
     expect(entities[3]).toMatchObject({ isSecurityDevice: true, isReadOnly: true });
-    expect(entities[1]).toMatchObject({
+    expect(entities[2]).toMatchObject({
       deviceKey: "light.kitchen", category: "lighting", availabilityStatus: "online",
       unit: null, canToggle: true,
     });
-    expect(entities[0]).toMatchObject({ category: "curtains", canToggle: false });
-    expect(entities[2]).toMatchObject({ category: "security", canToggle: false });
+    expect(entities[1]).toMatchObject({ category: "curtains", canToggle: false });
+    expect(entities[3]).toMatchObject({ category: "security", canToggle: false });
   });
   it("deduplicates, skips malformed records and identifies unavailable devices", () => {
     const entities = normalizeHaEntities([
