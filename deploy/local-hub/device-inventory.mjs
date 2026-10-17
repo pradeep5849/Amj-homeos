@@ -31,6 +31,7 @@ export function buildInventorySnapshot(devices, { generatedAt = new Date().toISO
       fanSpeedStages: device.fanSpeedStages ?? null,
       fanSpeedMode: device.fanSpeedMode ?? null,
       fanSpeedStage: device.fanSpeedStage ?? null,
+      curtainActions: device.category === "curtains" ? device.curtainActions ?? null : null,
     };
   });
   return { generatedAt, count: items.length, summary, devices: items, readOnly: true };

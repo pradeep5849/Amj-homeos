@@ -55,6 +55,11 @@ export function normalizeHaEntities(states, { fanStages = new Map() } = {}) {
       isSensor: match[1] === "sensor" || match[1] === "binary_sensor",
       isSecurityDevice: match[1] === "lock",
       isCurtain: match[1] === "cover",
+      curtainActions: match[1] === "cover" && online && Number.isInteger(entry.attributes.supported_features) ? {
+        open: (entry.attributes.supported_features & 1) !== 0,
+        close: (entry.attributes.supported_features & 2) !== 0,
+        stop: (entry.attributes.supported_features & 8) !== 0,
+      } : null,
       source: "home_assistant",
     });
     if (entities.length >= MAX_ENTITIES) break;

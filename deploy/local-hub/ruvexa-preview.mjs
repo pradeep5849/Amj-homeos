@@ -73,6 +73,33 @@ export const ruvexaScript = `(() => {
       button.disabled = false;
     }
   }
+  async function controlCurtain(device, action, button) {
+    if (!credentials || button.disabled) return;
+    const session = credentials;
+    button.disabled = true;
+    message("Sending curtain command…");
+    try {
+      const response = await fetch("/v1/devices/curtain", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.token,
+          "X-AMJ-Session-ID": session.sessionId, "Content-Type": "application/json" },
+        body: JSON.stringify({ entityId: device.id, action }), cache: "no-store"
+      });
+      if (credentials !== session) return;
+      if (response.status === 401) {
+        disconnect();
+        message("Session expired. Ask your installer for a new session.");
+      } else if (!response.ok) {
+        message(response.status === 403 ? "Curtain not approved." :
+          response.status === 409 ? "Curtain action unavailable." : "Curtain command failed.");
+      } else {
+        message("Curtain command accepted. Refreshing…");
+        await refresh();
+      }
+    } catch {
+      if (credentials === session) message("Gateway unreachable. Curtain state is unconfirmed.");
+    } finally { button.disabled = false; }
+  }
   async function setFanSpeed(device, selection, button) {
     if (!credentials || button.disabled) return;
     const session = credentials;
@@ -181,6 +208,20 @@ export const ruvexaScript = `(() => {
           apply.addEventListener("click", () => setFanSpeed(device, percentageMode ? { percentage: Number(select.value) } : { stage: Number(select.value) }, apply));
           label.append(select);
           card.append(label, apply);
+        }
+        if (device.category === "curtains" && device.availability === "online" &&
+            device.curtainActions) {
+          const controls = document.createElement("div");
+          controls.className = "row";
+          for (const action of ["open", "stop", "close"]) {
+            if (device.curtainActions[action] !== true) continue;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = action === "open" ? "Open" : action === "close" ? "Close" : "Stop";
+            button.addEventListener("click", () => controlCurtain(device, action, button));
+            controls.append(button);
+          }
+          card.append(controls);
         }
         el("devices").append(card);
       }

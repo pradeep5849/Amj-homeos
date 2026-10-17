@@ -6,6 +6,7 @@ import { createCustomerSessionAuthority } from "./customer-sessions.mjs";
 import { normalizeHaEntities } from "./ha-device-discovery.mjs";
 import { buildInventorySnapshot } from "./device-inventory.mjs";
 import { parseAllowedFanSpeed, parseFanStageConfig } from "./fan-speed.mjs";
+import { parseAllowedCurtainCommand } from "./curtain-commands.mjs";
 import { ruvexaHtml, ruvexaScript } from "./ruvexa-preview.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
@@ -24,6 +25,7 @@ const timeoutMs = 5000;
 const pairing = createLocalPairingAuthority();
 const customerSessions = createCustomerSessionAuthority();
 const fanStages = parseFanStageConfig(process.env.AMJ_FAN_SPEED_STAGES ?? "");
+const curtainAllowlist = new Set((process.env.AMJ_ALLOWED_CURTAIN_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const relayAllowlist = new Set((process.env.AMJ_ALLOWED_RELAY_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const entityIdPattern = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
 const allowedDomains = new Set(["light", "switch", "fan", "sensor", "binary_sensor"]);
@@ -171,7 +173,7 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (req.method === "POST" && req.url === "/v1/customer-sessions") {
-    // Installer explicitly grants a client a subset of configured relay devices.
+    // Installer explicitly grants a client a subset of configured relay/curtain devices.
     if (!authorized(req)) { send(res, 401, { error: "Unauthorized" }); return; }
     let raw = "";
     try {
@@ -182,7 +184,7 @@ const server = createServer(async (req, res) => {
       const input = JSON.parse(raw);
       if (!input || typeof input !== "object" || Array.isArray(input) ||
           !Array.isArray(input.allowedEntities) ||
-          !input.allowedEntities.every(id => relayAllowlist.has(id))) {
+          !input.allowedEntities.every(id => relayAllowlist.has(id) || curtainAllowlist.has(id))) {
         send(res, 400, { error: "Invalid device grant" }); return;
       }
       send(res, 201, customerSessions.issue(input));
@@ -203,6 +205,48 @@ const server = createServer(async (req, res) => {
       if (typeof input.sessionId !== "string") { send(res, 400, { error: "Invalid session" }); return; }
       send(res, 200, { revoked: customerSessions.revoke(input.sessionId) });
     } catch { send(res, 400, { error: "Invalid request" }); }
+    return;
+  }
+  // Covers must be explicitly allowed and granted to the customer session.
+  if (req.method === "POST" && req.url === "/v1/devices/curtain") {
+    const installer = authorized(req);
+    const sessionId = req.headers["x-amj-session-id"];
+    const auth = req.headers.authorization;
+    const sessionToken = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    const approved = installer ? null : customerSessions.approvedEntities({ sessionId, token: sessionToken });
+    if (!installer && !approved) { send(res, 401, { error: "Unauthorized" }); return; }
+    let raw = "";
+    try {
+      for await (const chunk of req) {
+        raw += chunk.toString("utf8");
+        if (raw.length > 1024) { send(res, 413, { error: "Request too large" }); return; }
+      }
+      const command = parseAllowedCurtainCommand(JSON.parse(raw), curtainAllowlist);
+      if (!command) { send(res, 400, { error: "Invalid or unapproved curtain command" }); return; }
+      if (!installer && !approved.has(command.entityId)) {
+        send(res, 403, { error: "Curtain not granted to session" }); return;
+      }
+      const state = await haRequest(`/api/states/${command.entityId}`);
+      if (!state || state.entity_id !== command.entityId ||
+          ["unknown", "unavailable"].includes(state.state)) {
+        send(res, 409, { error: "Curtain unavailable" }); return;
+      }
+      const features = state.attributes?.supported_features;
+      const requiredFlag = command.action === "open" ? 1 : command.action === "close" ? 2 : 8;
+      if (!Number.isInteger(features) || (features & requiredFlag) === 0) {
+        send(res, 409, { error: "Curtain action unsupported" }); return;
+      }
+      const response = await fetch(new URL(`/api/services/cover/${command.service}`, origin), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_id: command.entityId }),
+        signal: AbortSignal.timeout(timeoutMs), redirect: "error",
+      });
+      if (!response.ok) throw new Error("HA curtain command failed");
+      send(res, 202, { accepted: true, entityId: command.entityId, requestedAction: command.action });
+    } catch {
+      send(res, 503, { error: "Curtain command unavailable" });
+    }
     return;
   }
   // Installer/customer-scoped fan speed control; no generic HA service proxy.
