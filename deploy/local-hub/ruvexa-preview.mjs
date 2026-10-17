@@ -73,7 +73,7 @@ export const ruvexaScript = `(() => {
       button.disabled = false;
     }
   }
-  async function setFanSpeed(device, percentage, button) {
+  async function setFanSpeed(device, stage, button) {
     if (!credentials || button.disabled) return;
     const session = credentials;
     button.disabled = true;
@@ -83,7 +83,7 @@ export const ruvexaScript = `(() => {
         method: "POST",
         headers: { Authorization: "Bearer " + session.token,
           "X-AMJ-Session-ID": session.sessionId, "Content-Type": "application/json" },
-        body: JSON.stringify({ entityId: device.id, percentage }), cache: "no-store"
+        body: JSON.stringify({ entityId: device.id, stage }), cache: "no-store"
       });
       if (credentials !== session) return;
       if (response.status === 401) {
@@ -150,15 +150,16 @@ export const ruvexaScript = `(() => {
           card.append(toggle);
         }
         if (device.category === "fans" && device.supportsFanSpeed === true &&
+            (device.fanSpeedStages === 4 || device.fanSpeedStages === 5) &&
             device.availability === "online") {
           const label = document.createElement("label");
           label.textContent = "Fan speed";
           const select = document.createElement("select");
-          for (let percentage = 0; percentage <= 100; percentage += 10) {
+          for (let stage = 1; stage <= device.fanSpeedStages; stage++) {
             const option = document.createElement("option");
-            option.value = String(percentage);
-            option.textContent = String(percentage) + "%";
-            option.selected = device.fanSpeedPercentage === percentage;
+            option.value = String(stage);
+            option.textContent = "Speed " + String(stage);
+            option.selected = device.fanSpeedStage === stage;
             select.append(option);
           }
           const apply = document.createElement("button");
