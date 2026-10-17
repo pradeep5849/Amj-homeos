@@ -510,6 +510,7 @@ model Gateway {
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   pairingChallenges CctvGatewayPairingChallenge[]
+  cctvRequestNonces CctvGatewayRequestNonce[]
   home              Home                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
 
   @@unique([id, homeId])
@@ -527,6 +528,18 @@ model CctvGatewayPairingChallenge {
   gateway     Gateway   @relation(fields: [gatewayId, homeId], references: [id, homeId], onDelete: Restrict)
 
   @@index([gatewayId, homeId, expiresAt])
+}
+
+model CctvGatewayRequestNonce {
+  id        String   @id @default(uuid()) @db.Uuid
+  gatewayId String   @db.Uuid
+  homeId    String   @db.Uuid
+  nonce     String
+  createdAt DateTime @default(now())
+  gateway   Gateway  @relation(fields: [gatewayId, homeId], references: [id, homeId], onDelete: Restrict)
+
+  @@unique([gatewayId, nonce])
+  @@index([createdAt])
 }
 
 model DeviceOnboardingSession {
