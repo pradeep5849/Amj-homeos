@@ -5,7 +5,7 @@ import { parseAllowedRelayCommand } from "./commands.mjs";
 import { createCustomerSessionAuthority } from "./customer-sessions.mjs";
 import { normalizeHaEntities } from "./ha-device-discovery.mjs";
 import { buildInventorySnapshot } from "./device-inventory.mjs";
-import { parseAllowedFanSpeed } from "./fan-speed.mjs";
+import { parseAllowedFanSpeed, parseFanStageConfig } from "./fan-speed.mjs";
 import { ruvexaHtml, ruvexaScript } from "./ruvexa-preview.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
@@ -23,6 +23,7 @@ if (!["http:", "https:"].includes(origin.protocol) || origin.pathname !== "/" ||
 const timeoutMs = 5000;
 const pairing = createLocalPairingAuthority();
 const customerSessions = createCustomerSessionAuthority();
+const fanStages = parseFanStageConfig(process.env.AMJ_FAN_SPEED_STAGES ?? "");
 const relayAllowlist = new Set((process.env.AMJ_ALLOWED_RELAY_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const entityIdPattern = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
 const allowedDomains = new Set(["light", "switch", "fan", "sensor", "binary_sensor"]);
@@ -219,7 +220,7 @@ const server = createServer(async (req, res) => {
         raw += chunk.toString("utf8");
         if (raw.length > 1024) { send(res, 413, { error: "Request too large" }); return; }
       }
-      const command = parseAllowedFanSpeed(JSON.parse(raw), relayAllowlist);
+      const command = parseAllowedFanSpeed(JSON.parse(raw), relayAllowlist, fanStages);
       if (!command) { send(res, 400, { error: "Invalid or unapproved fan command" }); return; }
       if (!installer && !customerSessions.verify({
         sessionId, token: sessionToken, entityId: command.entityId,
@@ -241,7 +242,7 @@ const server = createServer(async (req, res) => {
         signal: AbortSignal.timeout(timeoutMs), redirect: "error",
       });
       if (!response.ok) throw new Error("HA fan command failed");
-      send(res, 202, { accepted: true, entityId: command.entityId, requestedPercentage: command.percentage });
+      send(res, 202, { accepted: true, entityId: command.entityId, requestedStage: command.stage });
     } catch {
       send(res, 503, { error: "Fan speed command unavailable" });
     }
