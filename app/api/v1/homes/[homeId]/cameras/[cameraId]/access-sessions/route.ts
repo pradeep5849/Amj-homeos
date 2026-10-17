@@ -29,4 +29,8 @@ export async function POST(request: Request, context: Context) {
     if (flags[capability] !== true || camera.connectionStatus !== "ONLINE") {
       throw new HttpError(409, "Camera capability is not available");
     }
-    // Metadata capabilities are user-declared, not verified by a gateway.\n    // Do not issue usable authorization until trusted gateway attestation exists.\n    throw new HttpError(501, "Verified CCTV media gateway is not configured");\nn  } catch (error) { return errorResponse(error); }\n}
+    // Metadata capabilities are user-declared, not verified by a gateway.
+    // Do not issue usable authorization until trusted gateway attestation exists.
+    throw new HttpError(501, "Verified CCTV media gateway is not configured");
+  } catch (error) { return errorResponse(error); }
+}
