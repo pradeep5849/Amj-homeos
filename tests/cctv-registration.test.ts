@@ -27,11 +27,12 @@ describe("CCTV registration input boundary", () => {
     }
   });
   it("never includes internal secret references in public output", () => {
-    const result = toPublicCamera({
+    const internalCamera = {
       ...valid, id: recorderId, roomId: null, recorderId: null, recorderChannel: null,
       model: null, connectionMethod: "UNSUPPORTED", connectionStatus: "UNKNOWN",
       isArchived: false, secretRef: "sensitive" ,
-    });
+    };
+    const result = toPublicCamera(internalCamera);
     expect(JSON.stringify(result)).not.toContain("sensitive");
     expect(result).not.toHaveProperty("secretRef");
   });
