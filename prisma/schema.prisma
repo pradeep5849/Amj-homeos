@@ -98,6 +98,7 @@ enum GatewayType {
   ZIGBEE
   TUYA
   MULTIPROTOCOL
+  CCTV
 }
 
 enum GatewayConnectionType {
@@ -484,7 +485,15 @@ model Device {
   @@index([roomId, isArchived])
 }
 
+enum CctvGatewayStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
 model Gateway {
+  cctvStatus        CctvGatewayStatus?
   id                String                @id @default(uuid()) @db.Uuid
   homeId            String                @db.Uuid
   name              String
