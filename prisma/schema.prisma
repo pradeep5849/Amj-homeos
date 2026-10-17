@@ -440,6 +440,7 @@ model Room {
   cameras        Camera[]
 
   @@unique([homeId, normalizedName])
+  @@unique([id, homeId])
   @@index([homeId])
 }
 
@@ -1025,7 +1026,7 @@ model Camera {
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   home             Home                   @relation(fields: [homeId], references: [id], onDelete: Restrict)
-  room             Room?                  @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  room             Room?                  @relation(fields: [roomId, homeId], references: [id, homeId], onDelete: Restrict)
   recorder         CameraRecorder?        @relation(fields: [recorderId, homeId], references: [id, homeId], onDelete: Restrict)
 
   @@unique([recorderId, recorderChannel])
