@@ -75,6 +75,7 @@ export const ruvexaScript = `(() => {
   }
   async function refresh() {
     if (!credentials) return;
+    const session = credentials;
     el("refresh").disabled = true;
     message("Loading your devices…");
     try {
@@ -89,6 +90,7 @@ export const ruvexaScript = `(() => {
       }
       if (!response.ok) throw new Error("Gateway unavailable");
       const inventory = await response.json();
+      if (credentials !== session) return;
       if (!inventory || !Array.isArray(inventory.devices) || inventory.devices.length > 1000)
         throw new Error("Invalid inventory");
       clearDevices();
@@ -122,8 +124,10 @@ export const ruvexaScript = `(() => {
       }
       message("Device list updated.");
     } catch {
-      clearDevices();
-      message("Unable to load devices. Check your gateway connection.");
+      if (credentials === session) {
+        clearDevices();
+        message("Unable to load devices. Check your gateway connection.");
+      }
     } finally {
       el("refresh").disabled = !credentials;
     }
