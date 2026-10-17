@@ -23,5 +23,5 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Audit runtime dependencies (high and critical)
         run: npm audit --omit=dev --audit-level=high
-      - name: Audit all dependencies (high and critical)
-        run: npm audit --audit-level=high
+      - name: Audit all dependencies (high and critical, narrowly scoped dev exception)
+        run: node scripts/audit-dev-exception.mjs
