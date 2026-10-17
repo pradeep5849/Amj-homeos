@@ -2,6 +2,7 @@ import { Socket } from "node:net";
 import { parseLocalCameraEndpoint, type LocalCameraEndpoint } from "./local-camera-endpoint";
 import { validateDiscoveredRtspUri } from "./onvif-stream-uri";
 import { RtspWireFramer } from "./rtsp-wire-framer";
+import { inspectRtpPacket } from "./rtsp-interleaved";
 import { RtspAuthenticatedNegotiator, type RtspPendingRequest } from "./rtsp-auth-negotiator";
 import type { RtspDigestCredentials } from "./rtsp-digest-header";
 
@@ -53,10 +54,10 @@ export async function probeAuthenticatedRtsp(input: {
             if (next) send(next);
             else streaming = true;
           } else {
-            if (!streaming || frame.channel !== 0 || frame.payload.length < 12 ||
-                (frame.payload[0] >> 6) !== 2) {
+            if (!streaming || frame.channel !== 0) {
               throw new Error("Unexpected RTSP interleaved media");
             }
+            inspectRtpPacket(frame.payload);
             finish(undefined, frame.payload.length);
             return;
           }
