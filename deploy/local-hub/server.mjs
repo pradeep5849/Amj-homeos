@@ -7,6 +7,7 @@ import { normalizeHaEntities } from "./ha-device-discovery.mjs";
 import { buildInventorySnapshot } from "./device-inventory.mjs";
 import { parseAllowedFanSpeed, parseFanStageConfig } from "./fan-speed.mjs";
 import { parseAllowedCurtainCommand } from "./curtain-commands.mjs";
+import { parseAllowedCurtainPosition } from "./curtain-position.mjs";
 import { ruvexaHtml, ruvexaScript } from "./ruvexa-preview.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
@@ -25,6 +26,7 @@ const timeoutMs = 5000;
 const pairing = createLocalPairingAuthority();
 const customerSessions = createCustomerSessionAuthority();
 const fanStages = parseFanStageConfig(process.env.AMJ_FAN_SPEED_STAGES ?? "");
+const cameraAllowlist = new Set((process.env.AMJ_ALLOWED_CAMERA_ENTITIES ?? "").split(",").map(x => x.trim()).filter(x => /^camera\\.[a-z0-9_]+$/.test(x)));
 const curtainAllowlist = new Set((process.env.AMJ_ALLOWED_CURTAIN_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const relayAllowlist = new Set((process.env.AMJ_ALLOWED_RELAY_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const entityIdPattern = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
@@ -184,7 +186,7 @@ const server = createServer(async (req, res) => {
       const input = JSON.parse(raw);
       if (!input || typeof input !== "object" || Array.isArray(input) ||
           !Array.isArray(input.allowedEntities) ||
-          !input.allowedEntities.every(id => relayAllowlist.has(id) || curtainAllowlist.has(id))) {
+          !input.allowedEntities.every(id => relayAllowlist.has(id) || curtainAllowlist.has(id) || cameraAllowlist.has(id))) {
         send(res, 400, { error: "Invalid device grant" }); return;
       }
       send(res, 201, customerSessions.issue(input));
@@ -205,6 +207,98 @@ const server = createServer(async (req, res) => {
       if (typeof input.sessionId !== "string") { send(res, 400, { error: "Invalid session" }); return; }
       send(res, 200, { revoked: customerSessions.revoke(input.sessionId) });
     } catch { send(res, 400, { error: "Invalid request" }); }
+    return;
+  }
+  // Authenticated still-image proxy only. Never expose HA tokens or remote camera URLs.
+  if (req.method === "GET" && req.url?.startsWith("/v1/cameras/snapshot?")) {
+    const installer = authorized(req);
+    const sessionId = req.headers["x-amj-session-id"];
+    const auth = req.headers.authorization;
+    const sessionToken = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    const approved = installer ? null : customerSessions.approvedEntities({ sessionId, token: sessionToken });
+    if (!installer && !approved) { send(res, 401, { error: "Unauthorized" }); return; }
+    const params = new URL(req.url, "http://localhost").searchParams;
+    const id = params.get("entityId");
+    if (params.size !== 1 || !id || !/^camera\.[a-z0-9_]+$/.test(id) || !cameraAllowlist.has(id)) {
+      send(res, 400, { error: "Camera not approved" }); return;
+    }
+    if (!installer && !approved.has(id)) { send(res, 403, { error: "Camera not granted" }); return; }
+    try {
+      const state = await haRequest(`/api/states/${id}`);
+      if (!state || state.entity_id !== id || ["unavailable", "unknown"].includes(state.state)) {
+        send(res, 409, { error: "Camera unavailable" }); return;
+      }
+      const response = await fetch(new URL(`/api/camera_proxy/${id}`, origin), {
+        headers: { Authorization: `Bearer ${token}`, Accept: "image/jpeg,image/png" },
+        signal: AbortSignal.timeout(timeoutMs), redirect: "error",
+      });
+      if (!response.ok) throw new Error("Camera snapshot unavailable");
+      const mime = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+      if (mime !== "image/jpeg" && mime !== "image/png") {
+        send(res, 502, { error: "Unsupported snapshot format" }); return;
+      }
+      const declared = Number(response.headers.get("content-length"));
+      if (declared > 2_000_000) { send(res, 502, { error: "Snapshot too large" }); return; }
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No snapshot body");
+      const chunks = [];
+      let total = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > 2_000_000) {
+            await reader.cancel(); send(res, 502, { error: "Snapshot too large" }); return;
+          }
+          chunks.push(value);
+        }
+      } finally { reader.releaseLock(); }
+      if (total === 0) { send(res, 502, { error: "Empty snapshot" }); return; }
+      res.writeHead(200, {
+        "Content-Type": mime, "Cache-Control": "no-store, private",
+        "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'",
+      });
+      res.end(Buffer.concat(chunks));
+    } catch { send(res, 503, { error: "Camera snapshot unavailable" }); }
+    return;
+  }
+  if (req.method === "POST" && req.url === "/v1/devices/curtain-position") {
+    const installer = authorized(req);
+    const sessionId = req.headers["x-amj-session-id"];
+    const auth = req.headers.authorization;
+    const sessionToken = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    const approved = installer ? null : customerSessions.approvedEntities({ sessionId, token: sessionToken });
+    if (!installer && !approved) { send(res, 401, { error: "Unauthorized" }); return; }
+    let raw = "";
+    try {
+      for await (const chunk of req) {
+        raw += chunk.toString("utf8");
+        if (raw.length > 1024) { send(res, 413, { error: "Request too large" }); return; }
+      }
+      const command = parseAllowedCurtainPosition(JSON.parse(raw), curtainAllowlist);
+      if (!command) { send(res, 400, { error: "Invalid or unapproved position" }); return; }
+      if (!installer && !approved.has(command.entityId)) {
+        send(res, 403, { error: "Curtain not granted" }); return;
+      }
+      const state = await haRequest(`/api/states/${command.entityId}`);
+      if (!state || state.entity_id !== command.entityId ||
+          ["unknown", "unavailable"].includes(state.state)) {
+        send(res, 409, { error: "Curtain unavailable" }); return;
+      }
+      if (!Number.isInteger(state.attributes?.supported_features) ||
+          (state.attributes.supported_features & 4) === 0) {
+        send(res, 409, { error: "Position not supported" }); return;
+      }
+      const response = await fetch(new URL("/api/services/cover/set_cover_position", origin), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_id: command.entityId, position: command.position }),
+        signal: AbortSignal.timeout(timeoutMs), redirect: "error",
+      });
+      if (!response.ok) throw new Error("HA curtain position failed");
+      send(res, 202, { accepted: true, entityId: command.entityId, requestedPosition: command.position });
+    } catch { send(res, 503, { error: "Curtain position unavailable" }); }
     return;
   }
   // Covers must be explicitly allowed and granted to the customer session.
