@@ -25,16 +25,25 @@ export async function POST(_request: Request, context: Context) {
     if (!gateway) throw new HttpError(404, "Pending gateway not found");
 
     const now = new Date();
-    const active = await prisma.cctvGatewayPairingChallenge.count({
-      where: { gatewayId, homeId, consumedAt: null, expiresAt: { gt: now } },
-    });
-    if (active) throw new HttpError(409, "Pairing challenge already issued");
-
     const token = createPairingToken();
     const expiresAt = new Date(now.getTime() + CCTV_PAIRING_TTL_MS);
-    await prisma.cctvGatewayPairingChallenge.create({
-      data: { gatewayId, homeId, tokenDigest: digestPairingToken(token, key), expiresAt },
-    });
+    // Expired unconsumed challenges may be replaced. The partial unique
+    // database index prevents simultaneous issuance for the same gateway.
+    try {
+      await prisma.$transaction(async tx => {
+        await tx.cctvGatewayPairingChallenge.deleteMany({
+          where: { gatewayId, homeId, consumedAt: null, expiresAt: { lte: now } },
+        });
+        await tx.cctvGatewayPairingChallenge.create({
+          data: { gatewayId, homeId, tokenDigest: digestPairingToken(token, key), expiresAt },
+        });
+      });
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+        throw new HttpError(409, "Pairing challenge already issued");
+      }
+      throw error;
+    }
     return Response.json({ token, expiresAt }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) { return errorResponse(error); }
 }
