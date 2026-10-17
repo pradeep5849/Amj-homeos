@@ -33,7 +33,7 @@ export async function POST(request: Request, context: Context) {
     // Camera ownership is verified before replay nonce consumption. Only
     // registered cameras for this home may receive gateway reports.
     const camera = await prisma.camera.findFirst({
-      where: { id: report.cameraId, homeId, isArchived: false },
+      where: { id: report.cameraId, homeId, cctvGatewayId: gatewayId, isArchived: false },
       select: { id: true },
     });
     if (!camera) throw new HttpError(404, "Camera not found");
