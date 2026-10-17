@@ -25,8 +25,14 @@ export const ruvexaScript = `(() => {
   "use strict";
   const el = id => document.getElementById(id);
   let credentials = null;
+  const cameraRefreshTimers = new Set();
+  function stopCameraRefresh() {
+    for (const timer of cameraRefreshTimers) clearInterval(timer);
+    cameraRefreshTimers.clear();
+  }
   const message = text => { el("message").textContent = text; };
   function clearDevices() {
+    stopCameraRefresh();
     for (const img of el("devices").querySelectorAll("img[data-object-url]")) {
       URL.revokeObjectURL(img.dataset.objectUrl);
     }
@@ -98,11 +104,11 @@ export const ruvexaScript = `(() => {
     } catch { if (credentials === session) message("Curtain position unconfirmed."); }
     finally { button.disabled = false; }
   }
-  async function loadCameraSnapshot(device, button, picture) {
-    if (!credentials || button.disabled) return;
+  async function loadCameraSnapshot(device, button, picture, quiet = false) {
+    if (!credentials || button.disabled || document.hidden || !picture.isConnected) return;
     const session = credentials;
     button.disabled = true;
-    message("Loading camera still image…");
+    if (!quiet) message("Loading camera still image…");
     try {
       const response = await fetch("/v1/cameras/snapshot?entityId=" + encodeURIComponent(device.id), {
         headers: { Authorization: "Bearer " + session.token, "X-AMJ-Session-ID": session.sessionId },
@@ -123,8 +129,8 @@ export const ruvexaScript = `(() => {
       picture.dataset.objectUrl = url;
       picture.src = url;
       picture.hidden = false;
-      message("Camera still image loaded. This is not a live video stream.");
-    } catch { if (credentials === session) message("Camera still image unavailable."); }
+      if (!quiet) message("Camera still image loaded. This is not a live video stream.");
+    } catch { if (credentials === session && !quiet) message("Camera still image unavailable."); }
     finally { button.disabled = false; }
   }
   async function controlCurtain(device, action, button) {
@@ -301,7 +307,28 @@ export const ruvexaScript = `(() => {
           picture.hidden = true; picture.alt = "Camera still image";
           picture.style.cssText = "width:100%;height:auto;margin-top:12px;border-radius:8px";
           button.addEventListener("click", () => loadCameraSnapshot(device, button, picture));
-          card.append(button, picture);
+          const auto = document.createElement("button");
+          auto.type = "button";
+          auto.textContent = "Start 5-second still refresh";
+          let timer = null;
+          auto.addEventListener("click", () => {
+            if (timer !== null) {
+              clearInterval(timer); cameraRefreshTimers.delete(timer);
+              timer = null; auto.textContent = "Start 5-second still refresh";
+              return;
+            }
+            auto.textContent = "Stop still refresh";
+            loadCameraSnapshot(device, button, picture);
+            timer = setInterval(() => {
+              if (!credentials || !card.isConnected) {
+                clearInterval(timer); cameraRefreshTimers.delete(timer);
+                timer = null; return;
+              }
+              if (!document.hidden) loadCameraSnapshot(device, button, picture, true);
+            }, 5000);
+            cameraRefreshTimers.add(timer);
+          });
+          card.append(button, auto, picture);
         }
         el("devices").append(card);
       }
@@ -323,5 +350,5 @@ export const ruvexaScript = `(() => {
   });
   el("refresh").addEventListener("click", refresh);
   el("disconnect").addEventListener("click", disconnect);
-  window.addEventListener("pagehide", () => { credentials = null; });
+  window.addEventListener("pagehide", () => { credentials = null; stopCameraRefresh(); clearDevices(); });
 })();`;
