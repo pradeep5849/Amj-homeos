@@ -509,6 +509,7 @@ model Gateway {
   isArchived        Boolean               @default(false)
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
+  pairingChallenges CctvGatewayPairingChallenge[]
   home              Home                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
 
   @@unique([id, homeId])
@@ -523,6 +524,7 @@ model CctvGatewayPairingChallenge {
   expiresAt   DateTime
   consumedAt  DateTime?
   createdAt   DateTime  @default(now())
+  gateway     Gateway   @relation(fields: [gatewayId, homeId], references: [id, homeId], onDelete: Restrict)
 
   @@index([gatewayId, homeId, expiresAt])
 }
