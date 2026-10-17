@@ -73,7 +73,7 @@ export const ruvexaScript = `(() => {
       button.disabled = false;
     }
   }
-  async function setFanSpeed(device, stage, button) {
+  async function setFanSpeed(device, selection, button) {
     if (!credentials || button.disabled) return;
     const session = credentials;
     button.disabled = true;
@@ -83,7 +83,7 @@ export const ruvexaScript = `(() => {
         method: "POST",
         headers: { Authorization: "Bearer " + session.token,
           "X-AMJ-Session-ID": session.sessionId, "Content-Type": "application/json" },
-        body: JSON.stringify({ entityId: device.id, stage }), cache: "no-store"
+        body: JSON.stringify({ entityId: device.id, ...selection }), cache: "no-store"
       });
       if (credentials !== session) return;
       if (response.status === 401) {
@@ -150,22 +150,27 @@ export const ruvexaScript = `(() => {
           card.append(toggle);
         }
         if (device.category === "fans" && device.supportsFanSpeed === true &&
-            (device.fanSpeedStages === 4 || device.fanSpeedStages === 5) &&
+            (device.fanSpeedMode === "percentage" ||
+              (device.fanSpeedMode === "stages" && (device.fanSpeedStages === 4 || device.fanSpeedStages === 5))) &&
             device.availability === "online") {
           const label = document.createElement("label");
-          label.textContent = "Fan speed";
+          label.textContent = device.fanSpeedMode === "percentage" ? "Fan speed (%)" : "Fan speed";
           const select = document.createElement("select");
-          for (let stage = 1; stage <= device.fanSpeedStages; stage++) {
+          const percentageMode = device.fanSpeedMode === "percentage";
+          const max = percentageMode ? 100 : device.fanSpeedStages;
+          const start = percentageMode ? 0 : 1;
+          const step = percentageMode ? 5 : 1;
+          for (let stage = start; stage <= max; stage += step) {
             const option = document.createElement("option");
             option.value = String(stage);
-            option.textContent = "Speed " + String(stage);
-            option.selected = device.fanSpeedStage === stage;
+            option.textContent = percentageMode ? String(stage) + "%" : "Speed " + String(stage);
+            option.selected = percentageMode ? Math.round((device.fanSpeedPercentage ?? 0) / 5) * 5 === stage : device.fanSpeedStage === stage;
             select.append(option);
           }
           const apply = document.createElement("button");
           apply.type = "button";
           apply.textContent = "Set speed";
-          apply.addEventListener("click", () => setFanSpeed(device, Number(select.value), apply));
+          apply.addEventListener("click", () => setFanSpeed(device, percentageMode ? { percentage: Number(select.value) } : { stage: Number(select.value) }, apply));
           label.append(select);
           card.append(label, apply);
         }
