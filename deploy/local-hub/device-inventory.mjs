@@ -26,6 +26,8 @@ export function buildInventorySnapshot(devices, { generatedAt = new Date().toISO
       unit: device.unit ?? null,
       deviceClass: device.deviceClass ?? null,
       readOnly: device.isReadOnly === true,
+      supportsFanSpeed: device.supportsFanSpeed === true,
+      fanSpeedPercentage: device.fanSpeedPercentage ?? null,
     };
   });
   return { generatedAt, count: items.length, summary, devices: items, readOnly: true };
