@@ -15,3 +15,7 @@ CREATE UNIQUE INDEX "CctvGatewayPairingChallenge_tokenDigest_key" ON "CctvGatewa
 CREATE INDEX "CctvGatewayPairingChallenge_gatewayId_homeId_expiresAt_idx" ON "CctvGatewayPairingChallenge"("gatewayId", "homeId", "expiresAt");
 ALTER TABLE "CctvGatewayPairingChallenge" ADD CONSTRAINT "CctvGatewayPairingChallenge_gatewayId_homeId_fkey"
   FOREIGN KEY ("gatewayId", "homeId") REFERENCES "Gateway"("id", "homeId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Only one unconsumed challenge per gateway, including concurrent issuance.
+CREATE UNIQUE INDEX "CctvGatewayPairingChallenge_one_pending_per_gateway"
+  ON "CctvGatewayPairingChallenge"("gatewayId") WHERE "consumedAt" IS NULL;
