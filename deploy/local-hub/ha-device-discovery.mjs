@@ -14,7 +14,7 @@ const safeName = (value, fallback) => isPlainText(value) && value.trim() ? value
 const UNITS = new Set(["°C", "°F", "%", "W", "kW", "kWh", "V", "A", "lx", "ppm", "Pa", "hPa"]);
 const CATEGORIES = { light: "lighting", switch: "switches", fan: "fans", sensor: "sensors", binary_sensor: "sensors", cover: "curtains", lock: "security" };
 
-export function normalizeHaEntities(states) {
+export function normalizeHaEntities(states, { fanStages = new Map() } = {}) {
   if (!Array.isArray(states)) throw new Error("Invalid Home Assistant states");
   if (states.length > 10_000) throw new Error("Home Assistant state list too large");
   const entities = [];
@@ -47,6 +47,11 @@ export function normalizeHaEntities(states) {
       isReadOnly: !POWER_DOMAINS.has(match[1]),
       deviceClass: SAFE_DEVICE_CLASSES.has(entry.attributes.device_class) ? entry.attributes.device_class : null,
       supportsPowerControl: POWER_DOMAINS.has(match[1]),
+      supportsFanSpeed: match[1] === "fan" && online && ([4, 5, "percentage"].includes(fanStages.get(entry.entity_id))) && Number.isInteger(entry.attributes.supported_features) && (entry.attributes.supported_features & 1) !== 0,
+      fanSpeedStages: match[1] === "fan" && [4, 5].includes(fanStages.get(entry.entity_id)) ? fanStages.get(entry.entity_id) : null,
+      fanSpeedMode: match[1] === "fan" && [4, 5, "percentage"].includes(fanStages.get(entry.entity_id)) ? (fanStages.get(entry.entity_id) === "percentage" ? "percentage" : "stages") : null,
+      fanSpeedStage: match[1] === "fan" && [4, 5].includes(fanStages.get(entry.entity_id)) && Number.isFinite(entry.attributes.percentage) && entry.attributes.percentage > 0 && entry.attributes.percentage <= 100 ? Math.max(1, Math.min(fanStages.get(entry.entity_id), Math.round(entry.attributes.percentage * fanStages.get(entry.entity_id) / 100))) : null,
+      fanSpeedPercentage: match[1] === "fan" && online && Number.isInteger(entry.attributes.percentage) && entry.attributes.percentage >= 0 && entry.attributes.percentage <= 100 ? entry.attributes.percentage : null,
       isSensor: match[1] === "sensor" || match[1] === "binary_sensor",
       isSecurityDevice: match[1] === "lock",
       isCurtain: match[1] === "cover",

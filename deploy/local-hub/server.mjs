@@ -5,6 +5,7 @@ import { parseAllowedRelayCommand } from "./commands.mjs";
 import { createCustomerSessionAuthority } from "./customer-sessions.mjs";
 import { normalizeHaEntities } from "./ha-device-discovery.mjs";
 import { buildInventorySnapshot } from "./device-inventory.mjs";
+import { parseAllowedFanSpeed, parseFanStageConfig } from "./fan-speed.mjs";
 import { ruvexaHtml, ruvexaScript } from "./ruvexa-preview.mjs";
 
 const bind = process.env.AMJ_LOCAL_BIND ?? "127.0.0.1";
@@ -22,6 +23,7 @@ if (!["http:", "https:"].includes(origin.protocol) || origin.pathname !== "/" ||
 const timeoutMs = 5000;
 const pairing = createLocalPairingAuthority();
 const customerSessions = createCustomerSessionAuthority();
+const fanStages = parseFanStageConfig(process.env.AMJ_FAN_SPEED_STAGES ?? "");
 const relayAllowlist = new Set((process.env.AMJ_ALLOWED_RELAY_ENTITIES ?? "").split(",").map(x => x.trim()).filter(Boolean));
 const entityIdPattern = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
 const allowedDomains = new Set(["light", "switch", "fan", "sensor", "binary_sensor"]);
@@ -203,6 +205,49 @@ const server = createServer(async (req, res) => {
     } catch { send(res, 400, { error: "Invalid request" }); }
     return;
   }
+  // Installer/customer-scoped fan speed control; no generic HA service proxy.
+  if (req.method === "POST" && req.url === "/v1/devices/fan-speed") {
+    const installer = authorized(req);
+    const sessionId = req.headers["x-amj-session-id"];
+    const auth = req.headers.authorization;
+    const sessionToken = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    if (!installer && !customerSessions.verify({ sessionId, token: sessionToken })) {
+      send(res, 401, { error: "Unauthorized" }); return;
+    }
+    let raw = "";
+    try {
+      for await (const chunk of req) {
+        raw += chunk.toString("utf8");
+        if (raw.length > 1024) { send(res, 413, { error: "Request too large" }); return; }
+      }
+      const command = parseAllowedFanSpeed(JSON.parse(raw), relayAllowlist, fanStages);
+      if (!command) { send(res, 400, { error: "Invalid or unapproved fan command" }); return; }
+      if (!installer && !customerSessions.verify({
+        sessionId, token: sessionToken, entityId: command.entityId,
+      })) { send(res, 403, { error: "Fan not granted to session" }); return; }
+      const state = await haRequest(`/api/states/${command.entityId}`);
+      if (!state || state.entity_id !== command.entityId ||
+          state.state === "unavailable" || state.state === "unknown") {
+        send(res, 409, { error: "Fan unavailable" }); return;
+      }
+      // HA feature flag 1 denotes SET_SPEED support for fan entities.
+      if (!state.attributes || typeof state.attributes.supported_features !== "number" ||
+          !(state.attributes.supported_features & 1)) {
+        send(res, 409, { error: "Fan speed not supported" }); return;
+      }
+      const response = await fetch(new URL("/api/services/fan/set_percentage", origin), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_id: command.entityId, percentage: command.percentage }),
+        signal: AbortSignal.timeout(timeoutMs), redirect: "error",
+      });
+      if (!response.ok) throw new Error("HA fan command failed");
+      send(res, 202, { accepted: true, entityId: command.entityId, ...(command.stage === undefined ? { requestedPercentage: command.percentage } : { requestedStage: command.stage }) });
+    } catch {
+      send(res, 503, { error: "Fan speed command unavailable" });
+    }
+    return;
+  }
   if (req.method === "POST" && req.url === "/v1/devices/relay") {
     // Only a host-local installer holding the bootstrap secret may issue commands.
     // Paired preview tokens never authorize physical relay operations.
@@ -253,7 +298,7 @@ const server = createServer(async (req, res) => {
     const approved = installer ? null : customerSessions.approvedEntities({ sessionId, token: sessionToken });
     if (!installer && !approved) { send(res, 401, { error: "Unauthorized" }); return; }
     try {
-      const devices = normalizeHaEntities(await haRequest("/api/states"));
+      const devices = normalizeHaEntities(await haRequest("/api/states"), { fanStages });
       const visible = installer ? devices : devices.filter(device => approved.has(device.entityId));
       send(res, 200, buildInventorySnapshot(visible));
     } catch {
@@ -266,7 +311,7 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) { send(res, 401, { error: "Unauthorized" }); return; }
     try {
       const states = await haRequest("/api/states");
-      const devices = normalizeHaEntities(states);
+      const devices = normalizeHaEntities(states, { fanStages });
       send(res, 200, { devices, count: devices.length, readOnly: true });
     } catch {
       send(res, 503, { error: "Device discovery temporarily unavailable" });
