@@ -19,6 +19,8 @@ export async function connectRtspSession(input: {
   streamUri: string;
   mediaControlUri: string;
   timeoutMs?: number;
+  /** Internal test seam; production uses a real TCP socket. */
+  socketFactory?: () => Socket;
 }): Promise<RtspConnectionResult> {
   const endpoint = parseLocalCameraEndpoint(input.endpoint);
   const streamUri = validateDiscoveredRtspUri(input.streamUri, endpoint);
@@ -29,7 +31,7 @@ export async function connectRtspSession(input: {
   }
   const gate = new RtspWireSession();
   return new Promise((resolve, reject) => {
-    const socket = new Socket();
+    const socket = input.socketFactory?.() ?? new Socket();
     const events: RtspWireSessionEvent[] = [];
     let finished = false;
     const finish = (error?: Error) => {
@@ -48,6 +50,7 @@ export async function connectRtspSession(input: {
     socket.once("timeout", () => finish(new Error("RTSP connection timed out")));
     socket.once("connect", () => send("DESCRIBE", streamUri, 1, "Accept: application/sdp\r\n"));
     socket.on("data", chunk => {
+      if (finished) return;
       try {
         const prior = gate.state;
         const received = gate.push(chunk);
@@ -56,9 +59,9 @@ export async function connectRtspSession(input: {
           finish();
           return;
         }
-        if (prior === "DESCRIBE" && gate.state === "SETUP") {
+        if (prior === "DESCRIBE" && (gate.state === "SETUP" || gate.state === "PLAY" || gate.state === "STREAMING")) {
           send("SETUP", controlUri, 2, "Transport: RTP/AVP/TCP;unicast;interleaved=0-1\r\n");
-        } else if (prior === "SETUP" && gate.state === "PLAY") {
+        } else if (prior === "SETUP" && (gate.state === "PLAY" || gate.state === "STREAMING")) {
           const sessionId = gate.negotiatedSessionId;
           if (!sessionId) throw new Error("RTSP SETUP session ID missing");
           send("PLAY", streamUri, 3, "Session: " + sessionId + "\r\nRange: npt=0.000-\r\n");
