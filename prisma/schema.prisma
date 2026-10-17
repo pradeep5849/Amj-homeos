@@ -484,6 +484,7 @@ model Device {
 
   @@index([homeId, isArchived])
   @@index([roomId, isArchived])
+  @@index([cctvGatewayId, isArchived])
 }
 
 enum CctvGatewayStatus {
@@ -512,6 +513,7 @@ model Gateway {
   updatedAt         DateTime              @updatedAt
   pairingChallenges CctvGatewayPairingChallenge[]
   cctvRequestNonces CctvGatewayRequestNonce[]
+  cctvCameras       Camera[]
   home              Home                  @relation(fields: [homeId], references: [id], onDelete: Restrict)
 
   @@unique([id, homeId])
@@ -1076,6 +1078,7 @@ model Camera {
   roomId           String?                @db.Uuid
   recorderId       String?                @db.Uuid
   recorderChannel  Int?
+  cctvGatewayId    String?                @db.Uuid
   name             String
   brand            CameraBrand
   model            String?
@@ -1090,6 +1093,7 @@ model Camera {
   home             Home                   @relation(fields: [homeId], references: [id], onDelete: Restrict)
   room             Room?                  @relation(fields: [roomId, homeId], references: [id, homeId], onDelete: Restrict)
   recorder         CameraRecorder?        @relation(fields: [recorderId, homeId], references: [id, homeId], onDelete: Restrict)
+  cctvGateway      Gateway?               @relation(fields: [cctvGatewayId, homeId], references: [id, homeId], onDelete: Restrict)
 
   accessSessions   CctvAccessSession[]
 
