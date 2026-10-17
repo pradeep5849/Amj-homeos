@@ -194,6 +194,7 @@ export const ruvexaScript = `(() => {
         cache: "no-store"
       });
       if (response.status === 401) {
+        if (credentials !== session) return;
         disconnect();
         message("Session expired or invalid. Ask your installer for a new session.");
         return;
