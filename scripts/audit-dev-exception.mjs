@@ -5,6 +5,9 @@
  * Remove this exception as soon as a compatible upstream fix is available.
  */
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
 
 const result = spawnSync('npm', ['audit', '--json', '--audit-level=high'], {
   encoding: 'utf8',
@@ -42,7 +45,7 @@ for (const [name, finding] of Object.entries(vulnerabilities)) {
       && source.name === 'braces';
   });
   if (allowedPackages.has(name) && finding.isDirect !== true
-      && finding.isDev === true && onlyAllowedSources) {
+      && lock.packages?.['node_modules/' + name]?.dev === true && onlyAllowedSources) {
     exceptions++;
     console.warn('Temporary dev-only exception:', name, advisory);
   } else {
