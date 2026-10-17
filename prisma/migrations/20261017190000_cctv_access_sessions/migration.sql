@@ -1,3 +1,4 @@
+CREATE UNIQUE INDEX "Camera_id_homeId_key" ON "Camera"("id", "homeId");
 CREATE TYPE "CctvSessionPurpose" AS ENUM ('LIVE', 'RECORDINGS', 'PTZ');
 CREATE TABLE "CctvAccessSession" (
   "id" UUID NOT NULL,
