@@ -23,14 +23,12 @@ export async function PATCH(request: Request, context: Context) {
     });
     if (!existing) throw new HttpError(404, "Gateway not found");
     if (existing.cctvStatus === "REVOKED") throw new HttpError(409, "Gateway is revoked");
-    const updated = await prisma.gateway.update({
-      where: { id: existing.id },
-      data: {
-        name: input.name,
-        cctvStatus: input.status,
-        isOnline: input.status ? false : undefined,
-      },
+    const result = await prisma.gateway.updateMany({
+      where: { id: gatewayId, homeId, gatewayType: "CCTV", isArchived: false, cctvStatus: { not: "REVOKED" } },
+      data: { name: input.name, cctvStatus: input.status, isOnline: input.status ? false : undefined },
     });
+    if (result.count !== 1) throw new HttpError(409, "Gateway state changed");
+    const updated = await prisma.gateway.findFirstOrThrow({ where: { id: gatewayId, homeId, gatewayType: "CCTV" } });
     return Response.json({ gateway: publicCctvGateway(updated) });
   } catch (error) { return errorResponse(error); }
 }
