@@ -18,7 +18,7 @@ button:disabled{opacity:.55;cursor:default}.row{display:flex;gap:12px;flex-wrap:
 <p id="message" role="status" aria-live="polite"></p></section>
 <section class="card"><div class="row"><h2>My devices</h2><button id="refresh" type="button" disabled>Refresh</button></div>
 <p id="summary">Not connected</p><div id="devices"></div></section>
-<small>Only installer-approved lights and switches can be toggled. Commands require a valid customer session. Credentials are not saved in this browser.</small>
+<small>Only installer-approved lights, switches and fans can be toggled. Commands require a valid customer session. Credentials are not saved in this browser.</small>
 <script src="/ruvexa-preview.js" defer></script></main></body></html>`;
 
 export const ruvexaScript = `(() => {
@@ -108,10 +108,10 @@ export const ruvexaScript = `(() => {
         state.className = "badge";
         state.textContent = String(device.state || "unknown") + (device.unit || "");
         card.append(heading, category, state);
-        // The gateway remains authoritative: only scoped, approved light/switch
-        // commands can succeed. No lock, cover, fan or gate controls here.
+        // The gateway remains authoritative: only scoped, approved light/switch/fan
+        // commands can succeed. No lock, cover or gate controls here.
         if (device.canToggle === true && device.availability === "online" &&
-            (device.category === "lighting" || device.category === "switches") &&
+            (device.category === "lighting" || device.category === "switches" || device.category === "fans") &&
             (device.state === "on" || device.state === "off")) {
           const toggle = document.createElement("button");
           toggle.type = "button";

@@ -1,5 +1,5 @@
 /** Restrict prototype relay control to explicitly allowed HA entities. */
-const ENTITY_ID = /^(switch|light)\.[a-z0-9_]+$/;
+const ENTITY_ID = /^(switch|light|fan)\.[a-z0-9_]+$/;
 export function parseAllowedRelayCommand(value, allowlist) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const keys = Object.keys(value);
