@@ -29,6 +29,7 @@ export function buildInventorySnapshot(devices, { generatedAt = new Date().toISO
       supportsFanSpeed: device.supportsFanSpeed === true,
       fanSpeedPercentage: device.fanSpeedPercentage ?? null,
       fanSpeedStages: device.fanSpeedStages ?? null,
+      fanSpeedMode: device.fanSpeedMode ?? null,
       fanSpeedStage: device.fanSpeedStage ?? null,
     };
   });
