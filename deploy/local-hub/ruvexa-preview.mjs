@@ -155,12 +155,20 @@ export const ruvexaScript = `(() => {
             device.availability === "online") {
           const label = document.createElement("label");
           label.textContent = device.fanSpeedMode === "percentage" ? "Fan speed (%)" : "Fan speed";
-          const select = document.createElement("select");
           const percentageMode = device.fanSpeedMode === "percentage";
+          const select = document.createElement(percentageMode ? "input" : "select");
+          if (percentageMode) {
+            select.type = "range"; select.min = "0"; select.max = "100"; select.step = "1";
+            select.value = String(device.fanSpeedPercentage ?? 0);
+            const reading = document.createElement("span");
+            reading.textContent = select.value + "%";
+            select.addEventListener("input", () => { reading.textContent = select.value + "%"; });
+            label.append(reading);
+          }
           const max = percentageMode ? 100 : device.fanSpeedStages;
           const start = percentageMode ? 0 : 1;
           const step = percentageMode ? 5 : 1;
-          for (let stage = start; stage <= max; stage += step) {
+          if (!percentageMode) for (let stage = start; stage <= max; stage += step) {
             const option = document.createElement("option");
             option.value = String(stage);
             option.textContent = percentageMode ? String(stage) + "%" : "Speed " + String(stage);
