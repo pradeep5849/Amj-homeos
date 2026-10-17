@@ -5,8 +5,8 @@ export const ruvexaHtml = `<!doctype html>
 :root{color-scheme:dark}body{margin:0;background:#0c1424;color:#eef3fa;font:16px system-ui,sans-serif}
 main{max-width:880px;margin:32px auto;padding:20px}h1{margin-bottom:4px}p,small{color:#b6c5d9}
 .card{background:#17243a;border:1px solid #33465d;border-radius:16px;padding:20px;margin:14px 0}
-form{display:grid;gap:12px}label{display:grid;gap:6px}input,button{padding:12px;border-radius:8px;border:1px solid #65768a;font:inherit}
-input{background:#0d1c30;color:white}button{background:#5bc5ab;color:#0a1b23;font-weight:700;cursor:pointer}
+form{display:grid;gap:12px}label{display:grid;gap:6px}input,select,button{padding:12px;border-radius:8px;border:1px solid #65768a;font:inherit}
+input,select{background:#0d1c30;color:white}button{background:#5bc5ab;color:#0a1b23;font-weight:700;cursor:pointer}
 button:disabled{opacity:.55;cursor:default}.row{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center}
 #devices{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .badge{padding:5px 9px;border-radius:12px;background:#273e57}#message{min-height:24px}
@@ -73,6 +73,35 @@ export const ruvexaScript = `(() => {
       button.disabled = false;
     }
   }
+  async function setFanSpeed(device, percentage, button) {
+    if (!credentials || button.disabled) return;
+    const session = credentials;
+    button.disabled = true;
+    message("Setting fan speed…");
+    try {
+      const response = await fetch("/v1/devices/fan-speed", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.token,
+          "X-AMJ-Session-ID": session.sessionId, "Content-Type": "application/json" },
+        body: JSON.stringify({ entityId: device.id, percentage }), cache: "no-store"
+      });
+      if (credentials !== session) return;
+      if (response.status === 401) {
+        disconnect();
+        message("Session expired. Ask your installer for a new session.");
+      } else if (!response.ok) {
+        message(response.status === 403 ? "Fan control not approved." :
+          response.status === 409 ? "Fan speed unavailable." : "Fan speed command failed.");
+      } else {
+        message("Fan speed command accepted. Refreshing…");
+        await refresh();
+      }
+    } catch {
+      if (credentials === session) message("Gateway unreachable. Fan speed is unconfirmed.");
+    } finally {
+      button.disabled = false;
+    }
+  }
   async function refresh() {
     if (!credentials) return;
     const session = credentials;
@@ -119,6 +148,25 @@ export const ruvexaScript = `(() => {
           toggle.setAttribute("aria-label", toggle.textContent + " " + (device.name || device.id));
           toggle.addEventListener("click", () => setPower(device, device.state !== "on", toggle));
           card.append(toggle);
+        }
+        if (device.category === "fans" && device.supportsFanSpeed === true &&
+            device.availability === "online") {
+          const label = document.createElement("label");
+          label.textContent = "Fan speed";
+          const select = document.createElement("select");
+          for (let percentage = 0; percentage <= 100; percentage += 10) {
+            const option = document.createElement("option");
+            option.value = String(percentage);
+            option.textContent = String(percentage) + "%";
+            option.selected = device.fanSpeedPercentage === percentage;
+            select.append(option);
+          }
+          const apply = document.createElement("button");
+          apply.type = "button";
+          apply.textContent = "Set speed";
+          apply.addEventListener("click", () => setFanSpeed(device, Number(select.value), apply));
+          label.append(select);
+          card.append(label, apply);
         }
         el("devices").append(card);
       }
