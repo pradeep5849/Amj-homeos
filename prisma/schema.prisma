@@ -325,6 +325,7 @@ model Home {
   cameraRecorders      CameraRecorder[]
   cctvGateways         CctvGateway[]
   cctvEnrollmentCodes  CctvGatewayEnrollmentCode[]
+  cctvGatewayChallenges CctvGatewayChallenge[]
   devices              Device[]
   haEntityBindings     HomeAssistantEntityBinding[]
   gateways             Gateway[]
@@ -1059,6 +1060,7 @@ model CctvGateway {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   home        Home     @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  challenges  CctvGatewayChallenge[]
 
   @@unique([id, homeId])
   @@index([homeId, state])
@@ -1078,5 +1080,24 @@ model CctvGatewayEnrollmentCode {
   createdAt   DateTime  @default(now())
   home        Home      @relation(fields: [homeId], references: [id], onDelete: Restrict)
 
+  @@index([homeId, expiresAt])
+}
+
+/**
+ * One-time proof-of-possession challenges. Only challenge digests are stored.
+ * Issuance/redemption endpoints must atomically consume challenges.
+ */
+model CctvGatewayChallenge {
+  id         String    @id @default(uuid()) @db.Uuid
+  homeId     String    @db.Uuid
+  gatewayId  String    @db.Uuid
+  digest     String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  home       Home      @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  gateway    CctvGateway @relation(fields: [gatewayId, homeId], references: [id, homeId], onDelete: Restrict)
+
+  @@index([gatewayId, expiresAt])
   @@index([homeId, expiresAt])
 }
