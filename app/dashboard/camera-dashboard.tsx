@@ -79,10 +79,18 @@ export function CameraDashboard({ role }: { role: string }) {
     } catch (error) { setMessage(error instanceof Error ? error.message : "Registration failed"); }
     finally { setBusy(false); }
   }
-  async function manageCamera(camera: Camera, action: "rename" | "archive") {
+  async function manageCamera(camera: Camera, action: "rename" | "archive" | "room") {
     if (!homeId || busy) return;
     let name: string | undefined;
-    if (action === "rename") {
+    let roomId: string | null | undefined;
+    if (action === "room") {
+      const choice = window.prompt(`Assign room for ${camera.name}. Enter a room name, or leave blank to unassign.\nAvailable: ${rooms.map(r => r.name).join(", ")}`, rooms.find(r => r.id === camera.roomId)?.name ?? "");
+      if (choice === null) return;
+      const matching = rooms.find(r => r.name.toLocaleLowerCase() === choice.trim().toLocaleLowerCase());
+      if (choice.trim() && !matching) { setMessage("Room not found. Choose an existing room name."); return; }
+      roomId = matching?.id ?? null;
+      if (roomId === camera.roomId) return;
+    } else if (action === "rename") {
       const proposed = window.prompt("Camera name", camera.name);
       if (proposed === null) return;
       name = proposed.trim();
@@ -92,11 +100,11 @@ export function CameraDashboard({ role }: { role: string }) {
     try {
       const response = await fetch(`/api/v1/homes/${homeId}/cameras/${camera.id}`, {
         method: action === "archive" ? "DELETE" : "PATCH",
-        ...(action === "rename" ? { headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) } : {}),
+        ...(action !== "archive" ? { headers: { "content-type": "application/json" }, body: JSON.stringify(action === "room" ? { roomId } : { name }) } : {}),
       });
       if (!response.ok) throw new Error("Unable to update camera");
       setSelectedCamera(null);
-      setMessage(action === "archive" ? "Camera archived." : "Camera renamed.");
+      setMessage(action === "archive" ? "Camera archived." : action === "room" ? "Camera room updated." : "Camera renamed.");
       setRefresh(value => value + 1);
     } catch { setMessage("Unable to update camera."); }
     finally { setBusy(false); }
@@ -131,7 +139,7 @@ export function CameraDashboard({ role }: { role: string }) {
         <div className="device-grid">{cameras.map(camera => <article className="device-card" key={camera.id}>
           <div className="device-title"><span className="device-icon">▣</span><div><h3>{camera.name}</h3><p>{camera.brand.replaceAll("_"," ")} · {rooms.find(r => r.id === camera.roomId)?.name ?? "Unassigned"}</p></div></div>
           <p className="muted">{camera.sourceKind.replaceAll("_"," ")} · {camera.connectionStatus}</p>
-          <p>Live video not connected</p><button type="button" onClick={() => void checkLive(camera)}>View Camera Status</button>{canManage && <div><button type="button" disabled={busy} onClick={() => void manageCamera(camera, "rename")}>Rename</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "archive")}>Archive</button></div>}
+          <p>Live video not connected</p><button type="button" onClick={() => void checkLive(camera)}>View Camera Status</button>{canManage && <div><button type="button" disabled={busy} onClick={() => void manageCamera(camera, "rename")}>Rename</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "room")}>Change Room</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "archive")}>Archive</button></div>}
         </article>)}</div>}
       {selectedCamera && <div className="content-section" role="status"><h3>{selectedCamera.name} — Live view</h3><p>{readiness}</p><p>Recording playback and PTZ are not yet available.</p><button type="button" onClick={() => setSelectedCamera(null)}>Close</button></div>}
     </>}
