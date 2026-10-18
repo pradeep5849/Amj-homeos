@@ -16,6 +16,7 @@ export function CameraDashboard({ role }: { role: string }) {
   const [recorders, setRecorders] = useState<Recorder[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [refresh, setRefresh] = useState(0);
   const [showCamera, setShowCamera] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
@@ -44,7 +45,7 @@ export function CameraDashboard({ role }: { role: string }) {
       if (alive) { setRooms(roomData.rooms ?? []); setCameras(cameraData.cameras ?? []); setRecorders(recorderData.recorders ?? []); setMessage(""); }
     }).catch(() => { if (alive) setMessage("Unable to load CCTV data"); });
     return () => { alive = false; };
-  }, [homeId, busy]);
+  }, [homeId, busy, refresh]);
   async function submit(event: FormEvent<HTMLFormElement>, type: "camera" | "recorder") {
     event.preventDefault();
     if (!homeId || busy) return;
@@ -78,6 +79,28 @@ export function CameraDashboard({ role }: { role: string }) {
     } catch (error) { setMessage(error instanceof Error ? error.message : "Registration failed"); }
     finally { setBusy(false); }
   }
+  async function manageCamera(camera: Camera, action: "rename" | "archive") {
+    if (!homeId || busy) return;
+    let name: string | undefined;
+    if (action === "rename") {
+      const proposed = window.prompt("Camera name", camera.name);
+      if (proposed === null) return;
+      name = proposed.trim();
+      if (!name || name === camera.name) return;
+    } else if (!window.confirm(`Archive camera "${camera.name}"? It will disappear from the dashboard.`)) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/v1/homes/${homeId}/cameras/${camera.id}`, {
+        method: action === "archive" ? "DELETE" : "PATCH",
+        ...(action === "rename" ? { headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) } : {}),
+      });
+      if (!response.ok) throw new Error("Unable to update camera");
+      setSelectedCamera(null);
+      setMessage(action === "archive" ? "Camera archived." : "Camera renamed.");
+      setRefresh(value => value + 1);
+    } catch { setMessage("Unable to update camera."); }
+    finally { setBusy(false); }
+  }
   async function checkLive(camera: Camera) {
     setSelectedCamera(camera); setReadiness("Checking connection...");
     try {
@@ -108,7 +131,7 @@ export function CameraDashboard({ role }: { role: string }) {
         <div className="device-grid">{cameras.map(camera => <article className="device-card" key={camera.id}>
           <div className="device-title"><span className="device-icon">▣</span><div><h3>{camera.name}</h3><p>{camera.brand.replaceAll("_"," ")} · {rooms.find(r => r.id === camera.roomId)?.name ?? "Unassigned"}</p></div></div>
           <p className="muted">{camera.sourceKind.replaceAll("_"," ")} · {camera.connectionStatus}</p>
-          <p>Live video not connected</p><button type="button" onClick={() => void checkLive(camera)}>View Camera Status</button>
+          <p>Live video not connected</p><button type="button" onClick={() => void checkLive(camera)}>View Camera Status</button>{canManage && <div><button type="button" disabled={busy} onClick={() => void manageCamera(camera, "rename")}>Rename</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "archive")}>Archive</button></div>}
         </article>)}</div>}
       {selectedCamera && <div className="content-section" role="status"><h3>{selectedCamera.name} — Live view</h3><p>{readiness}</p><p>Recording playback and PTZ are not yet available.</p><button type="button" onClick={() => setSelectedCamera(null)}>Close</button></div>}
     </>}
