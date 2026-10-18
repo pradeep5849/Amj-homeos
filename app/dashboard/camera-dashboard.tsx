@@ -21,6 +21,7 @@ export function CameraDashboard({ role }: { role: string }) {
   const [showRecorder, setShowRecorder] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
   const [readiness, setReadiness] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
   const [sourceKind, setSourceKind] = useState<"IP_CAMERA" | "NVR_CHANNEL" | "DVR_CHANNEL">("IP_CAMERA");
   const canManage = role === "SUPER_ADMIN" || role === "ADMIN" || homes.find(h => h.id === homeId)?.memberships.some(m => m.role === "OWNER");
   useEffect(() => {
@@ -110,6 +111,8 @@ export function CameraDashboard({ role }: { role: string }) {
     finally { setBusy(false); }
   }
   async function checkLive(camera: Camera) {
+    if (statusBusy) return;
+    setStatusBusy(true);
     setSelectedCamera(camera); setReadiness("Checking connection...");
     try {
       const response = await fetch(`/api/v1/homes/${homeId}/cameras/${camera.id}/live`, { cache: "no-store" });
@@ -117,6 +120,7 @@ export function CameraDashboard({ role }: { role: string }) {
       const body = await response.json() as { available: boolean; message?: string };
       setReadiness(body.available ? "Gateway reports ready" : body.message ?? "Live view is unavailable");
     } catch { setReadiness("Live view is unavailable"); }
+    finally { setStatusBusy(false); }
   }
   return <section className="content-section" aria-label="CCTV dashboard">
     <div className="section-heading"><div><h1>CCTV Cameras</h1><p className="muted">Register and organize your security cameras. Live streaming requires a secure local gateway.</p></div></div>
@@ -138,10 +142,10 @@ export function CameraDashboard({ role }: { role: string }) {
       {cameras.length === 0 ? <div className="empty-state"><h3>No cameras registered</h3><p>Add your first camera to start organizing CCTV devices.</p></div> :
         <div className="device-grid">{cameras.map(camera => <article className="device-card" key={camera.id}>
           <div className="device-title"><span className="device-icon">▣</span><div><h3>{camera.name}</h3><p>{camera.brand.replaceAll("_"," ")} · {rooms.find(r => r.id === camera.roomId)?.name ?? "Unassigned"}</p></div></div>
-          <p className="muted">{camera.sourceKind.replaceAll("_"," ")} · {camera.connectionStatus}</p>
-          <p>Live video not connected</p><button type="button" onClick={() => void checkLive(camera)}>View Camera Status</button>{canManage && <div><button type="button" disabled={busy} onClick={() => void manageCamera(camera, "rename")}>Rename</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "room")}>Change Room</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "archive")}>Archive</button></div>}
+          <p className="muted">{camera.sourceKind.replaceAll("_"," ")} · {camera.connectionStatus === "ONLINE" ? "Online (reported)" : camera.connectionStatus === "OFFLINE" ? "Offline" : "Not connected / unknown"}</p>
+          <p>Live video unavailable until a secure gateway is connected.</p><button type="button" disabled={statusBusy} onClick={() => void checkLive(camera)}>View Camera Status</button>{canManage && <div><button type="button" disabled={busy} onClick={() => void manageCamera(camera, "rename")}>Rename</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "room")}>Change Room</button> <button type="button" disabled={busy} onClick={() => void manageCamera(camera, "archive")}>Archive</button></div>}
         </article>)}</div>}
-      {selectedCamera && <div className="content-section" role="status"><h3>{selectedCamera.name} — Live view</h3><p>{readiness}</p><p>Recording playback and PTZ are not yet available.</p><button type="button" onClick={() => setSelectedCamera(null)}>Close</button></div>}
+      {selectedCamera && <div className="content-section" role="status"><h3>{selectedCamera.name} — Live view</h3><p>{readiness}</p><p>Streaming, recording playback and PTZ are not yet available.</p><p className="muted">A registered camera is not automatically connected. Do not enter camera passwords or RTSP links in this dashboard.</p><button type="button" onClick={() => setSelectedCamera(null)}>Close</button></div>}
     </>}
   </section>;
 }
