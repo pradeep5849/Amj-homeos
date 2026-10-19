@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { generateKeyPairSync, createPublicKey, verify } from "node:crypto";
+import { generateKeyPairSync, verify } from "node:crypto";
 import { heartbeatMessage, heartbeatUrl, signedHeartbeat, sendHeartbeat } from "../gateway/cctv/agent.mjs";
 
 const homeId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -11,7 +11,7 @@ describe("local CCTV gateway agent", () => {
   it("signs the same canonical heartbeat message as the API", () => {
     const input = signedHeartbeat({ homeId, gatewayId, privateKey });
     expect(input.cameraIds).toEqual([]);
-    expect(verify(null, heartbeatMessage(input), createPublicKey(keys.publicKey), Buffer.from(input.signature, "base64url"))).toBe(true);
+    expect(verify(null, heartbeatMessage(input), keys.publicKey, Buffer.from(input.signature, "base64url"))).toBe(true);
     expect(input.nonce).toMatch(/^[A-Za-z0-9_-]{32}$/);
   });
   it("requires TLS except localhost and disallows URL credentials", () => {
