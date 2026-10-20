@@ -1,3 +1,4 @@
+import { authenticatedGetProfilesEnvelope } from "./onvif-wsse.mjs";
 /**
  * Local-only ONVIF Media1 GetProfiles. No credentials or stream URLs are returned.
  * Device addresses must be discovered and validated by the local gateway.
@@ -34,7 +35,7 @@ export function parseMediaProfiles(xml) {
   }
   return profiles;
 }
-export async function fetchMediaProfiles({ serviceUrl, sourceAddress, fetchImpl = fetch, signal }) {
+export async function fetchMediaProfiles({ serviceUrl, sourceAddress, credentials, fetchImpl = fetch, signal }) {
   const url = validateMediaServiceUrl(serviceUrl, sourceAddress);
   // No Basic credentials on cleartext HTTP. Authenticated profiles require a later
   // WS-Security UsernameToken implementation and credential vault.
@@ -42,7 +43,7 @@ export async function fetchMediaProfiles({ serviceUrl, sourceAddress, fetchImpl 
     method: "POST",
     redirect: "manual",
     headers: { "Content-Type": "application/soap+xml; charset=utf-8" },
-    body: getProfilesEnvelope(),
+    body: credentials ? authenticatedGetProfilesEnvelope(credentials) : getProfilesEnvelope(),
     signal: signal ?? AbortSignal.timeout(5000),
   });
   if (response.status !== 200) throw new Error(`ONVIF profile request failed (HTTP ${response.status})`);
